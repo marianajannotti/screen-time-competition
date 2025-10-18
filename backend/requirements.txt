@@ -1,0 +1,20 @@
+# Requirements for Screen Time Competition Backend
+# Install with: pip install -r requirements.txt
+
+# Flask core framework
+Flask==3.0.0
+flask-sqlalchemy==3.1.1
+flask-cors==4.0.0
+
+# Authentication & Security
+# We're using Werkzeug's built-in password hashing (comes with Flask)
+flask-login==0.6.3
+
+# Environment variables
+python-dotenv==1.0.0
+
+# Could be future additions:
+# alembic==1.12.1          # Database migrations
+# flask-jwt-extended==4.6.0  # JWT tokens
+# pytest==7.4.3            # Testing framework
+# black==23.11.0            # Code formatter
