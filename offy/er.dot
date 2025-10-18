@@ -1,0 +1,47 @@
+digraph OffyDatabase {
+    graph [splines=ortho, rankdir=LR, bgcolor="#ffffff"];
+    node [shape=record, style=filled, fillcolor="#f9f9f9", color="#333333", fontname="Helvetica", fontsize=10];
+    edge [color="#555555", arrowsize=0.8];
+
+    # === Entities (mirrors schema.sql) ===
+    Users [label="{Users|+ user_id : TEXT (PK)\l+ username : TEXT UNIQUE\l+ email : TEXT UNIQUE\l+ password_hash : TEXT\l+ profile_picture : TEXT\l+ created_at : DATETIME\l+ streak_count : INTEGER\l+ total_points : INTEGER\l}"];
+
+    ScreenTimeLogs [label="{ScreenTimeLogs|+ log_id : TEXT (PK)\l+ user_id : TEXT (FK)\l+ date : DATE\l+ screen_time_minutes : INTEGER\l+ uploaded_image : TEXT\l+ ocr_extracted : INTEGER (0/1)\l+ created_at : DATETIME\l}"];
+
+    Goals [label="{Goals|+ goal_id : TEXT (PK)\l+ user_id : TEXT (FK)\l+ goal_type : TEXT CHECK('daily','weekly')\l+ target_minutes : INTEGER\l+ start_date : DATE\l+ end_date : DATE\l+ achieved : INTEGER (0/1)\l}"];
+
+    Rewards [label="{Rewards|+ reward_id : TEXT (PK)\l+ user_id : TEXT (FK)\l+ reward_type : TEXT CHECK('streak','goal','challenge')\l+ description : TEXT\l+ points_awarded : INTEGER\l+ date_awarded : DATETIME\l}"];
+
+    Friendships [label="{Friendships|+ friendship_id : TEXT (PK)\l+ user_id : TEXT (FK)\l+ friend_id : TEXT (FK)\l+ status : TEXT CHECK('pending','accepted','blocked')\l+ created_at : DATETIME\l+ UNIQUE(user_id, friend_id)\l+ CHECK(user_id <> friend_id)\l}"];
+
+    Challenges [label="{Challenges|+ challenge_id : TEXT (PK)\l+ creator_id : TEXT (FK) NULLABLE\l+ title : TEXT\l+ description : TEXT\l+ metric : TEXT CHECK('total_time','app_specific','goal_streak')\l+ start_date : DATE\l+ end_date : DATE\l+ is_active : INTEGER (0/1)\l+ FK action: creator_id ON DELETE SET NULL\l}"];
+
+    ChallengeParticipants [label="{ChallengeParticipants|+ participant_id : TEXT (PK)\l+ challenge_id : TEXT (FK)\l+ user_id : TEXT (FK)\l+ total_screen_time : INTEGER\l+ rank : INTEGER\l+ completed : INTEGER (0/1)\l}"];
+
+    LeaderboardSnapshots [label="{LeaderboardSnapshots|+ snapshot_id : TEXT (PK)\l+ challenge_id : TEXT (FK)\l+ week_start : DATE\l+ generated_at : DATETIME\l+ data_json : TEXT (JSON)\l}"];
+
+    Notifications [label="{Notifications|+ notification_id : TEXT (PK)\l+ user_id : TEXT (FK)\l+ message : TEXT\l+ type : TEXT CHECK('goal_update','friend_request','challenge_invite','reward')\l+ is_read : INTEGER (0/1)\l+ created_at : DATETIME\l}"];
+
+    # === Relationships ===
+    Users -> ScreenTimeLogs [label="1..N", fontsize=9];
+    Users -> Goals [label="1..N", fontsize=9];
+    Users -> Rewards [label="1..N", fontsize=9];
+    Users -> Friendships [label="1..N (user_id)", fontsize=9];
+    Users -> Friendships [label="1..N (friend_id)", fontsize=9];
+    Users -> Challenges [label="0..N (creator_id) — nullable", fontsize=9];
+    Challenges -> ChallengeParticipants [label="1..N", fontsize=9];
+    Users -> ChallengeParticipants [label="1..N", fontsize=9];
+    Challenges -> LeaderboardSnapshots [label="1..N", fontsize=9];
+    Users -> Notifications [label="1..N", fontsize=9];
+
+    # FK actions (notes)
+    ScreenTimeLogs -> Users [label="FK: user_id -> users.user_id (ON DELETE CASCADE)", style=dashed, fontsize=8];
+    Goals -> Users [label="FK: user_id -> users.user_id (ON DELETE CASCADE)", style=dashed, fontsize=8];
+    Rewards -> Users [label="FK: user_id -> users.user_id (ON DELETE CASCADE)", style=dashed, fontsize=8];
+    Friendships -> Users [label="FKs: user_id, friend_id -> users.user_id (ON DELETE CASCADE)", style=dashed, fontsize=8];
+    Challenges -> Users [label="FK: creator_id -> users.user_id (ON DELETE SET NULL)", style=dashed, fontsize=8];
+    ChallengeParticipants -> Challenges [label="FK: challenge_id -> challenges.challenge_id (ON DELETE CASCADE)", style=dashed, fontsize=8];
+    ChallengeParticipants -> Users [label="FK: user_id -> users.user_id (ON DELETE CASCADE)", style=dashed, fontsize=8];
+    LeaderboardSnapshots -> Challenges [label="FK: challenge_id -> challenges.challenge_id (ON DELETE CASCADE)", style=dashed, fontsize=8];
+    Notifications -> Users [label="FK: user_id -> users.user_id (ON DELETE CASCADE)", style=dashed, fontsize=8];
+}
