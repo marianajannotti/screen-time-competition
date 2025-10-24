@@ -89,11 +89,4 @@ export async function signIn({ emailOrUsername, password }) {
 - `src/AppRouter.jsx` — router + route definitions
 - `src/pages/*` — page components (SignIn, SignUp, Dashboard, Profile, AddScreenTime)
 
-## Next steps you might want
-
-- Add styling (Tailwind is present in devDependencies) or wire a design system.
-- Implement real backend endpoints and replace mock functions in `src/api/mockApi.js`.
-- Add form validation and better loading/error UI on pages.
-
-If you'd like, I can run `npm install` and `npm run dev` here and share the terminal output and app URL — tell me to "run dev" and I'll start it and report back.
 
