@@ -3,7 +3,7 @@ Backend package for Screen Time Competition
 Flask app factory pattern with environment variables
 """
 
-from flask import Flask
+from flask import Flask, jsonify
 from flask_login import LoginManager
 from flask_cors import CORS
 from dotenv import load_dotenv
@@ -56,11 +56,24 @@ def create_app(config_name=None):
 
     # Register blueprints
     from .auth import auth_bp
+    from .screentime_routes import screentime_bp
 
     app.register_blueprint(auth_bp)
+    app.register_blueprint(screentime_bp)
+
+    @app.route("/", methods=["GET"])
+    def root_index():
+        """Simple root endpoint to avoid 404 on /"""
+        return jsonify({"message": "API root. See /api/auth and /api/screentime"}), 200
 
     # Create database tables
     with app.app_context():
         db.create_all()
 
     return app
+
+
+# Create a default app instance so `flask run` can import `backend.app` and
+# routes are registered when the package is imported by the Flask CLI.
+# This keeps the factory pattern but provides an `app` variable for CLI convenience.
+app = create_app(os.environ.get("FLASK_ENV", "development"))
