@@ -1,0 +1,49 @@
+"""
+Simple Configuration for Screen Time App
+Just the essentials to get started!
+"""
+
+import os
+
+
+class Config:
+    """Basic settings that all environments need"""
+
+    # Get secret key from environment variable
+    SECRET_KEY = os.environ.get("SECRET_KEY") or "fallback-key-for-development"
+
+    # Database settings
+    SQLALCHEMY_TRACK_MODIFICATIONS = False  # Saves memory
+
+    # Allow React frontend to connect (CORS = Cross-Origin Resource Sharing)
+    CORS_ORIGINS = ["http://localhost:3000"]
+
+
+class DevelopmentConfig(Config):
+    """Settings while you're coding"""
+
+    DEBUG = True  # Show helpful error pages
+    SQLALCHEMY_DATABASE_URI = os.environ.get("DATABASE_URL") or "sqlite:///app.db"
+
+
+class TestingConfig(Config):
+    """Settings for running tests"""
+
+    TESTING = True
+    SQLALCHEMY_DATABASE_URI = "sqlite:///:memory:"  # Temporary database
+
+
+class ProductionConfig(Config):
+    """Settings for live app (when you deploy)"""
+
+    DEBUG = False  # Don't show errors to users
+    SQLALCHEMY_DATABASE_URI = os.environ.get("DATABASE_URL") or "sqlite:///app_prod.db"
+
+
+# Easy way to pick which config to use
+config = {
+    "development": DevelopmentConfig,
+    "testing": TestingConfig,
+    "production": ProductionConfig,
+    "default": DevelopmentConfig,  # Use this if nothing specified
+}
