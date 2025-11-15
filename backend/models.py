@@ -4,10 +4,15 @@ Starting with just the basics - we can add more later
 """
 
 from flask_login import UserMixin
-from datetime import datetime
+from datetime import datetime, timezone
 
 # Import the shared database instance
 from .database import db
+
+
+def current_time_utc():
+    """Helper to provide timezone-aware UTC timestamps."""
+    return datetime.now(timezone.utc)
 
 
 class User(UserMixin, db.Model):
@@ -29,7 +34,7 @@ class User(UserMixin, db.Model):
     streak_count = db.Column(db.Integer, default=0)
     total_points = db.Column(db.Integer, default=0)
 
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=current_time_utc)
 
     # Flask-Login requirement
     def get_id(self):
@@ -60,19 +65,24 @@ class ScreenTimeLog(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    app_name = db.Column(db.String(120), nullable=False)
 
     # The actual data
     date = db.Column(db.Date, nullable=False)
     screen_time_minutes = db.Column(db.Integer, nullable=False, default=0)
 
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=current_time_utc)
 
     def to_dict(self):
         return {
             "id": self.id,
             "user_id": self.user_id,
+            "app_name": self.app_name,
             "date": self.date.isoformat(),
             "screen_time_minutes": self.screen_time_minutes,
+            "hours": self.screen_time_minutes // 60,
+            "minutes": self.screen_time_minutes % 60,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
         }
 
     def __repr__(self):
@@ -122,7 +132,7 @@ class Friendship(db.Model):
 
     # Status of friendship
     status = db.Column(db.String(20), default="pending")  # pending/accepted
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=current_time_utc)
 
     def to_dict(self):
         return {

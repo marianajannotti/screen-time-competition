@@ -46,6 +46,7 @@ A web application for friendly screen time competition - track daily usage, set 
 - **Database Models** - Users, screen time logs, goals, friendships
 - **Flask + SQLAlchemy** - Clean API structure with SQLite database
 - **CORS Support** - Ready for React frontend
+- **Screen Time Logging** - Capture daily app usage entries with validation helpers
 
 ### API Endpoints
 - `POST /api/auth/register` - Create account
@@ -53,6 +54,28 @@ A web application for friendly screen time competition - track daily usage, set 
 - `GET /api/auth/status` - Check auth status
 - `GET /api/auth/me` - Get user info
 - `POST /api/auth/logout` - Logout
+- `POST /api/screen-time/` - Save a screen time entry
+- `GET /api/screen-time/` - List recent entries for the signed-in user
+
+### Screen Time API Usage
+
+#### 1. Log Screen Time (authenticated)
+```bash
+curl -X POST "http://127.0.0.1:5000/api/screen-time/" \
+   -H "Content-Type: application/json" \
+   -b cookies.txt \
+   -d '{
+      "app_name": "YouTube",
+      "hours": 1,
+      "minutes": 30,
+      "date": "2025-01-01"
+   }'
+```
+
+#### 2. Fetch Recent Entries (authenticated)
+```bash
+curl -s "http://127.0.0.1:5000/api/screen-time/?limit=10" -b cookies.txt
+```
 
 ## 🧪 Testing the Backend
 
