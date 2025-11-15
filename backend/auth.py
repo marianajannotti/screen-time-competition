@@ -3,20 +3,36 @@ Authentication Blueprint for Screen Time Competition
 Handles user registration, login, logout
 """
 
-from flask import Blueprint, request, jsonify, session
-from werkzeug.security import generate_password_hash, check_password_hash
+from flask import Blueprint, request, jsonify, make_response
 from flask_login import login_user, logout_user, login_required, current_user
-from .database import db  # Import shared db instance
-from .models import User  # Import User model
+from .database import db
+from .auth_service import AuthService
 
 # Create blueprint
 auth_bp = Blueprint("auth", __name__, url_prefix="/api/auth")
 
 
+def add_api_headers(response):
+    """Add standard HTTP headers to API response.
+
+    Adds headers for content type and caching control to ensure proper
+    API behavior and security.
+
+    Args:
+        response: Flask Response object to modify
+
+    Returns:
+        Response: Modified response object with added headers
+    """
+    response.headers["Content-Type"] = "application/json"
+    response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
+    response.headers["Pragma"] = "no-cache"
+    return response
+
+
 @auth_bp.route("/register", methods=["POST"])
 def register():
-    """
-    Register a new user
+    """Register a new user.
 
     Expected JSON:
     {
@@ -24,101 +40,142 @@ def register():
         "email": "alice@example.com",
         "password": "securepassword"
     }
+
+    Returns:
+        Response: JSON response with user data or error message
     """
+    # Validate Content-Type
+    if request.content_type != "application/json":
+        response = make_response(
+            jsonify({"error": "Content-Type must be application/json"}), 415
+        )
+        return add_api_headers(response)
+
     try:
         data = request.get_json()
 
-        # Validate required fields
-        if (
-            not data
-            or not data.get("username")
-            or not data.get("email")
-            or not data.get("password")
-        ):
-            return jsonify({"error": "Missing username, email, or password"}), 400
+        # Extract fields
+        username = data.get("username")
+        email = data.get("email")
+        password = data.get("password")
 
-        username = data["username"].strip()
-        email = data["email"].strip().lower()
-        password = data["password"]
+        # Validate registration data
+        is_valid, error_msg = AuthService.validate_registration_data(
+            username, email, password
+        )
+        if not is_valid:
+            response = make_response(jsonify({"error": error_msg}), 400)
+            return add_api_headers(response)
 
-        # Check if user already exists
-        if User.query.filter_by(username=username).first():
-            return jsonify({"error": "Username already exists"}), 400
+        # Check if user exists
+        exists, field = AuthService.check_user_exists(username=username, email=email)
+        if exists:
+            response = make_response(
+                jsonify({"error": f"{field.capitalize()} already exists"}), 400
+            )
+            return add_api_headers(response)
 
-        if User.query.filter_by(email=email).first():
-            return jsonify({"error": "Email already registered"}), 400
+        # Create user
+        new_user = AuthService.create_user(username, email, password)
 
-        # Create new user
-        password_hash = generate_password_hash(password)
-        new_user = User(username=username, email=email, password_hash=password_hash)
-
-        db.session.add(new_user)
-        db.session.commit()
-
-        return (
+        response = make_response(
             jsonify(
                 {"message": "User registered successfully", "user": new_user.to_dict()}
             ),
             201,
         )
+        return add_api_headers(response)
 
     except Exception as e:
         db.session.rollback()
-        return jsonify({"error": f"Registration failed: {str(e)}"}), 500
+        response = make_response(
+            jsonify({"error": f"Registration failed: {str(e)}"}), 500
+        )
+        return add_api_headers(response)
 
 
 @auth_bp.route("/login", methods=["POST"])
 def login():
-    """
-    Login user
+    """Login user.
 
     Expected JSON:
     {
         "username": "alice",
         "password": "securepassword"
     }
+
+    Returns:
+        Response: JSON response with user data or error message
     """
+    # Validate Content-Type
+    if request.content_type != "application/json":
+        response = make_response(
+            jsonify({"error": "Content-Type must be application/json"}), 415
+        )
+        return add_api_headers(response)
+
     try:
         data = request.get_json()
+        username = data.get("username")
+        password = data.get("password")
 
-        if not data or not data.get("username") or not data.get("password"):
-            return jsonify({"error": "Missing username or password"}), 400
+        # Authenticate user
+        user, error_msg = AuthService.authenticate_user(username, password)
 
-        username = data["username"].strip()
-        password = data["password"]
+        if error_msg:
+            response = make_response(jsonify({"error": error_msg}), 401)
+            return add_api_headers(response)
 
-        # Find user
-        user = User.query.filter_by(username=username).first()
+        # Log user in
+        login_user(user)
 
-        if user and check_password_hash(user.password_hash, password):
-            login_user(user)
-            return jsonify({"message": "Login successful", "user": user.to_dict()}), 200
-        else:
-            return jsonify({"error": "Invalid username or password"}), 401
+        response = make_response(
+            jsonify({"message": "Login successful", "user": user.to_dict()}), 200
+        )
+        return add_api_headers(response)
 
     except Exception as e:
-        return jsonify({"error": f"Login failed: {str(e)}"}), 500
+        response = make_response(jsonify({"error": f"Login failed: {str(e)}"}), 500)
+        return add_api_headers(response)
 
 
 @auth_bp.route("/logout", methods=["POST"])
 @login_required
 def logout():
-    """Logout current user"""
+    """Logout current user.
+
+    Returns:
+        Response: JSON response confirming logout
+    """
     logout_user()
-    return jsonify({"message": "Logged out successfully"}), 200
+    response = make_response(jsonify({"message": "Logged out successfully"}), 200)
+    return add_api_headers(response)
 
 
 @auth_bp.route("/me", methods=["GET"])
 @login_required
 def get_current_user():
-    """Get current logged-in user info"""
-    return jsonify({"user": current_user.to_dict()}), 200
+    """Get current logged-in user info.
+
+    Returns:
+        Response: JSON response with current user data
+    """
+    response = make_response(jsonify({"user": current_user.to_dict()}), 200)
+    return add_api_headers(response)
 
 
 @auth_bp.route("/status", methods=["GET"])
 def auth_status():
-    """Check if user is logged in (no login required)"""
+    """Check if user is logged in.
+
+    Returns:
+        Response: JSON response with authentication status
+    """
     if current_user.is_authenticated:
-        return jsonify({"authenticated": True, "user": current_user.to_dict()}), 200
+        response = make_response(
+            jsonify({"authenticated": True, "user": current_user.to_dict()}), 200
+        )
+        return add_api_headers(response)
     else:
-        return jsonify({"authenticated": False}), 200
+        response = make_response(jsonify({"authenticated": False}), 200)
+        return add_api_headers(response)
