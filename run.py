@@ -18,4 +18,4 @@ else:
 
 if __name__ == "__main__":
     # Run in development mode
-    app.run(host="127.0.0.1", debug=True)
+    app.run(host="127.0.0.1", port=5001, debug=True)
