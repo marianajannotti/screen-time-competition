@@ -61,6 +61,16 @@ npm run preview
 	- `/profile` — Protected: view/edit mock profile
 	- `/add` — Protected: add screen time
 
+## WebApp Features
+
+- Log and track total screen time
+- Set daily and weekly goals for reduced phone usage
+- Earn streaks and rewards (badges) for meeting goals consistently
+- Create personalized challenges with friends (e.g., who spends the least time on Instagram in a week or who has the lowest total screen time in a month)
+- Compete on a leaderboard to see who is winning by staying off their phones
+- Add friends and form groups to compete or compare progress
+- Recover password (password reset flow)
+
 ## Mock API
 
 All backend-like calls are in `src/api/mockApi.js`. Functions return Promises and persist a tiny in-memory DB to `localStorage` so that your actions survive reloads.
