@@ -64,15 +64,33 @@ class ScreenTimeLog(db.Model):
     # The actual data
     date = db.Column(db.Date, nullable=False)
     screen_time_minutes = db.Column(db.Integer, nullable=False, default=0)
+    
+    # Optional: track top apps manually
+    top_apps = db.Column(db.Text)  # JSON string of app usage
 
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Ensure one entry per user per date
+    __table_args__ = (db.UniqueConstraint('user_id', 'date', name='unique_user_date'),)
 
     def to_dict(self):
+        import json
+        top_apps_data = []
+        if self.top_apps:
+            try:
+                top_apps_data = json.loads(self.top_apps)
+            except:
+                top_apps_data = []
+                
         return {
             "id": self.id,
             "user_id": self.user_id,
             "date": self.date.isoformat(),
             "screen_time_minutes": self.screen_time_minutes,
+            "top_apps": top_apps_data,
+            "created_at": self.created_at.isoformat(),
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }
 
     def __repr__(self):
