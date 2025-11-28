@@ -1,4 +1,5 @@
 """
+<<<<<<< HEAD
 Screen Time Routes for Manual Logging and Analytics
 
 This module provides API endpoints for users to manually log their daily screen time
@@ -24,6 +25,10 @@ API Endpoints:
 - GET /api/screentime/history - Retrieve historical logs
 - GET /api/screentime/stats/weekly - Get weekly analytics
 - GET /api/screentime/stats/monthly - Get monthly analytics
+=======
+Screen Time Routes for Manual Input
+Handles manual screen time logging and tracking
+>>>>>>> 9b67612dccc770a661f9a1a97dfe159e63e027eb
 """
 
 from flask import Blueprint, request, jsonify
@@ -31,12 +36,18 @@ from flask_login import login_required, current_user
 from datetime import datetime, date, timedelta
 from .database import db
 from .models import ScreenTimeLog
+<<<<<<< HEAD
 from .business_logic import BusinessLogicService
 from .validation import ValidationService
 import json
 
 # Create screen time blueprint with URL prefix
 # All routes in this blueprint will be prefixed with /api/screentime
+=======
+import json
+
+# Create blueprint
+>>>>>>> 9b67612dccc770a661f9a1a97dfe159e63e027eb
 screentime_bp = Blueprint("screentime", __name__, url_prefix="/api/screentime")
 
 
@@ -44,6 +55,7 @@ screentime_bp = Blueprint("screentime", __name__, url_prefix="/api/screentime")
 @login_required
 def log_screen_time():
     """
+<<<<<<< HEAD
     Screen Time Logging Endpoint
     
     Allows users to manually log their screen time for a specific date. Supports
@@ -95,6 +107,20 @@ def log_screen_time():
         400: Invalid input data or validation failure
         401: User not authenticated
         500: Internal server error during logging
+=======
+    Log screen time for a specific date
+    
+    Expected JSON:
+    {
+        "date": "2024-01-15",  # optional, defaults to today
+        "screen_time_minutes": 180,
+        "top_apps": [  # optional
+            {"name": "Instagram", "minutes": 60},
+            {"name": "TikTok", "minutes": 45},
+            {"name": "YouTube", "minutes": 30}
+        ]
+    }
+>>>>>>> 9b67612dccc770a661f9a1a97dfe159e63e027eb
     """
     try:
         data = request.get_json()
@@ -147,12 +173,15 @@ def log_screen_time():
             existing_log.updated_at = datetime.utcnow()
             db.session.commit()
             
+<<<<<<< HEAD
             # Update user gamification stats (streak & points)
             try:
                 BusinessLogicService.update_user_gamification_stats(current_user.id)
             except Exception as e:
                 print(f"Warning: Failed to update gamification stats: {e}")
             
+=======
+>>>>>>> 9b67612dccc770a661f9a1a97dfe159e63e027eb
             return jsonify({
                 "message": "Screen time updated successfully",
                 "data": existing_log.to_dict()
@@ -169,12 +198,15 @@ def log_screen_time():
             db.session.add(new_log)
             db.session.commit()
             
+<<<<<<< HEAD
             # Update user gamification stats (streak & points)
             try:
                 BusinessLogicService.update_user_gamification_stats(current_user.id)
             except Exception as e:
                 print(f"Warning: Failed to update gamification stats: {e}")
             
+=======
+>>>>>>> 9b67612dccc770a661f9a1a97dfe159e63e027eb
             return jsonify({
                 "message": "Screen time logged successfully",
                 "data": new_log.to_dict()

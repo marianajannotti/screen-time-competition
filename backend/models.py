@@ -139,6 +139,7 @@ class ScreenTimeLog(db.Model):
     # Foreign key to users table - which user this belongs to
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
 
+<<<<<<< HEAD
     # Core screen time data
     date = db.Column(db.Date, nullable=False, index=True)  # Date being logged
     screen_time_minutes = db.Column(db.Integer, nullable=False, default=0)  # Total minutes
@@ -146,11 +147,20 @@ class ScreenTimeLog(db.Model):
     # Optional: detailed app usage breakdown stored as JSON
     # Example: '[{"name": "Instagram", "minutes": 60}, {"name": "TikTok", "minutes": 45}]'
     top_apps = db.Column(db.Text)
+=======
+    # The actual data
+    date = db.Column(db.Date, nullable=False)
+    screen_time_minutes = db.Column(db.Integer, nullable=False, default=0)
+    
+    # Optional: track top apps manually
+    top_apps = db.Column(db.Text)  # JSON string of app usage
+>>>>>>> 9b67612dccc770a661f9a1a97dfe159e63e027eb
 
     # Audit timestamps
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
+<<<<<<< HEAD
     # Database constraint: one entry per user per date
     __table_args__ = (db.UniqueConstraint('user_id', 'date', name='unique_user_date'),)
 
@@ -176,12 +186,23 @@ class ScreenTimeLog(db.Model):
                 - updated_at: When log was last modified (ISO timestamp or None)
         """
         # Parse top_apps JSON string safely with error handling
+=======
+    # Ensure one entry per user per date
+    __table_args__ = (db.UniqueConstraint('user_id', 'date', name='unique_user_date'),)
+
+    def to_dict(self):
+        import json
+>>>>>>> 9b67612dccc770a661f9a1a97dfe159e63e027eb
         top_apps_data = []
         if self.top_apps:
             try:
                 top_apps_data = json.loads(self.top_apps)
+<<<<<<< HEAD
             except (json.JSONDecodeError, TypeError):
                 # If JSON parsing fails, return empty list to prevent API errors
+=======
+            except:
+>>>>>>> 9b67612dccc770a661f9a1a97dfe159e63e027eb
                 top_apps_data = []
                 
         return {
@@ -189,7 +210,11 @@ class ScreenTimeLog(db.Model):
             "user_id": self.user_id,
             "date": self.date.isoformat(),  # Convert date object to ISO string
             "screen_time_minutes": self.screen_time_minutes,
+<<<<<<< HEAD
             "top_apps": top_apps_data,  # Parsed app usage breakdown
+=======
+            "top_apps": top_apps_data,
+>>>>>>> 9b67612dccc770a661f9a1a97dfe159e63e027eb
             "created_at": self.created_at.isoformat(),
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }

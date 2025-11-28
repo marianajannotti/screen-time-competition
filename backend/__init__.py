@@ -101,6 +101,7 @@ def create_app(config_name=None):
         """
         return User.query.get(int(user_id))
 
+<<<<<<< HEAD
     # ========================
     # Blueprint Registration
     # ========================
@@ -120,6 +121,19 @@ def create_app(config_name=None):
     app.register_blueprint(goals_bp)       # /api/goals/*
     app.register_blueprint(friends_bp)     # /api/friends/*
     app.register_blueprint(profile_bp)     # /api/profile/*
+=======
+    # Register blueprints
+    from .auth import auth_bp
+    from .screentime_routes import screentime_bp
+
+    app.register_blueprint(auth_bp)
+    app.register_blueprint(screentime_bp)
+
+    @app.route("/", methods=["GET"])
+    def root_index():
+        """Simple root endpoint to avoid 404 on /"""
+        return jsonify({"message": "API root. See /api/auth and /api/screentime"}), 200
+>>>>>>> 9b67612dccc770a661f9a1a97dfe159e63e027eb
 
     @app.route("/", methods=["GET"])
     def root_index():
@@ -156,10 +170,16 @@ def create_app(config_name=None):
     return app
 
 
+<<<<<<< HEAD
 # ========================
 # Default App Instance
 # ========================
 # Create a default app instance for Flask CLI compatibility
 # This allows running `flask run` from the command line while maintaining
 # the factory pattern for flexibility in testing and deployment
+=======
+# Create a default app instance so `flask run` can import `backend.app` and
+# routes are registered when the package is imported by the Flask CLI.
+# This keeps the factory pattern but provides an `app` variable for CLI convenience.
+>>>>>>> 9b67612dccc770a661f9a1a97dfe159e63e027eb
 app = create_app(os.environ.get("FLASK_ENV", "development"))
