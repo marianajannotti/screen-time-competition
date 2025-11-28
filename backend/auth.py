@@ -7,27 +7,10 @@ from flask import Blueprint, request, jsonify, make_response
 from flask_login import login_user, logout_user, login_required, current_user
 from .database import db
 from .auth_service import AuthService
+from .utils import add_api_headers
 
 # Create blueprint
 auth_bp = Blueprint("auth", __name__, url_prefix="/api/auth")
-
-
-def add_api_headers(response):
-    """Add standard HTTP headers to API response.
-
-    Adds headers for content type and caching control to ensure proper
-    API behavior and security.
-
-    Args:
-        response: Flask Response object to modify
-
-    Returns:
-        Response: Modified response object with added headers
-    """
-    response.headers["Content-Type"] = "application/json"
-    response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
-    response.headers["Pragma"] = "no-cache"
-    return response
 
 
 @auth_bp.route("/register", methods=["POST"])
