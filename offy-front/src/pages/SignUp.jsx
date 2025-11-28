@@ -22,18 +22,25 @@ export default function SignUp() {
   }
 
   return (
-    <main style={{ padding: 20 }}>
-      <h2>Sign up</h2>
-      <form onSubmit={onSubmit} style={{ display: 'grid', gap: 8, maxWidth: 360 }}>
-        <input placeholder="Username" value={username} onChange={(e) => setUsername(e.target.value)} />
-        <input placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} />
-        <input placeholder="Password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
-        <button type="submit">Create account</button>
-        {error && <div style={{ color: 'red' }}>{error}</div>}
-      </form>
-      <p>
-        Already have an account? <Link to="/signin">Sign in</Link>
-      </p>
+    <main style={{ padding: 32, display: 'flex', justifyContent: 'center' }}>
+      <div className="card" style={{ width: 520 }}>
+        <h2 style={{ marginTop: 0 }}>Create Account</h2>
+        <p className="muted">Join us and start tracking your screen time today!</p>
+
+        <form onSubmit={onSubmit} style={{ display: 'grid', gap: 12, marginTop: 16 }}>
+          <input placeholder="Username" value={username} onChange={(e) => setUsername(e.target.value)} required />
+          <input placeholder="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+          <input placeholder="Password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+
+          {error && <div style={{ color: 'red' }}>{error}</div>}
+
+          <button className="btn-primary" type="submit">Create account</button>
+        </form>
+
+        <p style={{ marginTop: 12 }}>
+          Already have an account? <Link to="/signin">Sign In</Link>
+        </p>
+      </div>
     </main>
   )
 }
