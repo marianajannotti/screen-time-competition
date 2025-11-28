@@ -3,6 +3,10 @@
   --bg: #ffffff;
   --muted: #666;
   --accent: #5b8def;
+  --purple: #6b21a8;
+  --accent-2: #4f46e5;
+  --card: #ffffff;
+  --soft: #f6f7fb;
 }
 
 html,body,#root{
@@ -19,16 +23,87 @@ body{
 
 header a{color:var(--accent);text-decoration:none}
 header button{background:#fff;border:1px solid #ddd;padding:6px 10px;border-radius:6px;cursor:pointer}
-main{max-width:1100px;margin:20px auto;padding:0 16px}
+header{background:var(--card);box-shadow:0 1px 0 rgba(0,0,0,0.04);}
+/* header inner: reduce right padding so right-most buttons fit inside viewport */
+header .inner{width:100%;display:flex;align-items:center;justify-content:space-between;padding:12px 16px}
+
+/* Make main full width horizontally and use padding for content spacing */
+main{max-width:none;width:100%;margin:0;padding:20px 28px}
+
+/* Ensure main expands to fill available vertical space so pages don't sit centered in half-screen */
+html, body, #root { height: 100%; }
+#root { display: flex; flex-direction: column; }
+main { flex: 1 1 auto; }
+
+.top-title{flex:1;text-align:center;font-weight:600;color:#222}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700}
+.brand .dot{width:36px;height:36px;border-radius:50%;background:linear-gradient(90deg,var(--purple),var(--accent-2));display:inline-flex;align-items:center;justify-content:center;color:#fff}
+
+.header-actions{display:flex;align-items:center;gap:10px;flex-shrink:0}
+.btn-primary{background:var(--purple);color:#fff;border-radius:10px;padding:8px 14px;border:none}
+.btn-ghost{background:transparent;border:1px solid #eee;padding:8px 12px;border-radius:8px}
 
 input,button,select,textarea{
   font:inherit;
 }
 
-input{padding:8px;border:1px solid #e6e6e6;border-radius:6px}
+input, textarea, select { padding: 12px 14px; border:1px solid #e9e9ef; border-radius:10px; background: #fff; color: #111; }
+input::placeholder, textarea::placeholder { color: #9aa0aa }
 button{padding:8px 12px;border-radius:6px}
 
-.card{background:#fff;border:1px solid #f0f0f0;padding:12px;border-radius:8px}
+.card{background:var(--card);border-radius:12px;padding:16px;box-shadow:0 6px 20px rgba(56,47,84,0.06);border:1px solid rgba(15,23,42,0.04)}
 
 /* small helpers */
 .muted{color:var(--muted)}
+
+/* Dashboard layout */
+.dashboard-grid{display:grid;grid-template-columns:300px 1fr;gap:20px}
+.left-rail{display:flex;flex-direction:column;gap:16px}
+.small-card{padding:14px;border-radius:10px;background:linear-gradient(180deg,#fff,#fbfbff);box-shadow:0 6px 18px rgba(15,23,42,0.03)}
+
+/* Modal-like page for add screen time */
+.modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,0.45);display:flex;align-items:center;justify-content:center;z-index:40}
+.modal{background:var(--card);width:760px;border-radius:10px;padding:22px;box-shadow:0 20px 60px rgba(2,6,23,0.2)}
+
+/* Leaderboard */
+.leaderboard-hero{display:flex;align-items:flex-end;justify-content:center;gap:24px;margin-bottom:24px}
+.podium{background:linear-gradient(180deg,#6b21a8,#5b21b0);color:#fff;padding:22px;border-radius:12px;min-width:160px;text-align:center}
+
+/* Buttons */
+.btn-primary{box-shadow:0 6px 18px rgba(91,35,173,0.18);transition:transform .12s ease,box-shadow .12s ease}
+.btn-primary:hover{transform:translateY(-2px)}
+.btn-ghost{border:1px solid rgba(15,23,42,0.06);background:#fff;color:#213547;padding:8px 10px}
+
+/* keep header-actions from overflowing the header */
+.header-actions { margin-right: 8px; }
+
+/* Card header/subtitle */
+.card h3, .card h4{margin:0 0 8px 0}
+.card .muted{font-size:0.95rem}
+
+/* Inputs focus */
+input:focus, textarea:focus, select:focus{outline:none;border-color:var(--accent-2);box-shadow:0 6px 20px rgba(79,70,229,0.08)}
+
+/* Avatar */
+.avatar{width:36px;height:36px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;color:#fff;background:linear-gradient(90deg,var(--purple),var(--accent-2))}
+
+/* Small badges/cards */
+.small-card{min-height:80px}
+
+/* Leaderboard podium tweaks */
+.podium{padding:18px 20px;border-radius:14px;box-shadow:0 12px 30px rgba(107,33,168,0.12)}
+.podium small{display:block;color:rgba(255,255,255,0.9);font-weight:600}
+
+/* Make modal form inputs larger and cleaner */
+.modal input{font-size:15px}
+.modal label{font-size:14px;color:#444;display:block;margin-bottom:6px}
+
+/* Responsive tweaks */
+@media (max-width:900px){
+  .dashboard-grid{grid-template-columns:1fr;}
+  header .inner{padding:12px}
+  .card{padding:12px}
+  .modal{width:92%;}
+}
+
+
