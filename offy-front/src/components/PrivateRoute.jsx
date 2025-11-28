@@ -1,10 +1,15 @@
 import React from 'react'
-import { Navigate } from 'react-router-dom'
+import { Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 
-export default function PrivateRoute({ component: Component }) {
-  const { user, loading } = useAuth()
+// Accept an "element" prop (React element) to align with common usage: <PrivateRoute element={<Dashboard/>} />
+export default function PrivateRoute({ element }) {
+  const { isAuthenticated, loading } = useAuth()
+  const location = useLocation()
+
   if (loading) return <div style={{ padding: 20 }}>Loading...</div>
-  if (!user) return <Navigate to="/signin" replace />
-  return <Component />
+  if (!isAuthenticated) {
+    return <Navigate to="/signin" replace state={{ from: location }} />
+  }
+  return element
 }

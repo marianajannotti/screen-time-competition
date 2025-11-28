@@ -18,13 +18,10 @@ export default function AppRouter() {
         <Route path="/signin" element={<SignIn />} />
         <Route path="/signup" element={<SignUp />} />
 
-        <Route
-          path="/dashboard"
-          element={<PrivateRoute component={Dashboard} />}
-        />
-        <Route path="/profile" element={<PrivateRoute component={Profile} />} />
-        <Route path="/add" element={<PrivateRoute component={AddScreenTime} />} />
-        <Route path="/leaderboard" element={<PrivateRoute component={Leaderboard} />} />
+  <Route path="/dashboard" element={<PrivateRoute element={<Dashboard />} />} />
+  <Route path="/profile" element={<PrivateRoute element={<Profile />} />} />
+  <Route path="/add" element={<PrivateRoute element={<AddScreenTime />} />} />
+  <Route path="/leaderboard" element={<PrivateRoute element={<Leaderboard />} />} />
 
         <Route path="*" element={<div style={{ padding: 20 }}>Not Found</div>} />
       </Routes>
