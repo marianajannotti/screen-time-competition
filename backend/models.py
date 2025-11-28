@@ -1,26 +1,81 @@
-"""
-Simple SQLAlchemy Models for Screen Time Competition
-Starting with just the basics - we can add more later
-"""
+"""Database models and app-name helpers for the Screen Time backend."""
+
+from datetime import datetime, timezone
+from typing import List, Tuple
 
 from flask_login import UserMixin
-from datetime import datetime, timezone
 
-# Import the shared database instance
 from .database import db
 
+DEFAULT_APP_NAME = "Total"
 
-def current_time_utc():
-    """Helper to provide timezone-aware UTC timestamps."""
+# Canonical set of apps exposed to the frontend dropdown.
+ALLOWED_APPS: Tuple[str, ...] = (
+    DEFAULT_APP_NAME,
+    "YouTube",
+    "TikTok",
+    "Instagram",
+    "Safari",
+    "Chrome",
+    "Messages",
+    "Mail",
+    "Other",
+)
+
+
+def current_time_utc() -> datetime:
+    """Return a timezone-aware UTC timestamp.
+
+    Returns:
+        datetime: Current UTC timestamp with tzinfo.
+    """
+
     return datetime.now(timezone.utc)
 
 
-class User(UserMixin, db.Model):
-    """
-    User model - represents people who use your app
+def list_allowed_apps() -> List[str]:
+    """Expose the allowed screen-time apps for dropdowns.
 
-    Much simpler with integer IDs: 1, 2, 3, 4...
+    Returns:
+        list[str]: Canonical app labels in display order.
     """
+
+    return list(ALLOWED_APPS)
+
+
+def canonicalize_app_name(raw_name: str | None) -> str:
+    """Normalize a user-provided app name to the canonical list.
+
+    Args:
+        raw_name (str | None): App label supplied by the client; may be blank
+            or None when the user wants to log total usage.
+
+    Returns:
+        str: Canonical app label suitable for persistence.
+
+    Raises:
+        ValueError: If the given name is not part of the allowed set.
+    """
+
+    if raw_name is None:
+        return DEFAULT_APP_NAME
+
+    candidate = str(raw_name).strip()
+    if not candidate:
+        return DEFAULT_APP_NAME
+
+    lower_candidate = candidate.lower()
+    for allowed in ALLOWED_APPS:
+        if lower_candidate == allowed.lower():
+            return allowed
+
+    raise ValueError(
+        "App name must be one of: " + ", ".join(ALLOWED_APPS)
+    )
+
+
+class User(UserMixin, db.Model):
+    """Authenticated user tracked by Flask-Login."""
 
     __tablename__ = "users"
 
@@ -36,12 +91,18 @@ class User(UserMixin, db.Model):
 
     created_at = db.Column(db.DateTime, default=current_time_utc)
 
-    # Flask-Login requirement
-    def get_id(self):
-        return str(self.id)  # Flask-Login needs string
+    def get_id(self) -> str:
+        """Return the user identifier required by Flask-Login."""
 
-    # Convert to JSON for React
-    def to_dict(self):
+        return str(self.id)
+
+    def to_dict(self) -> dict:
+        """Serialize the user for JSON responses.
+
+        Returns:
+            dict: Public user fields consumed by the frontend.
+        """
+
         return {
             "id": self.id,
             "username": self.username,
@@ -55,11 +116,7 @@ class User(UserMixin, db.Model):
 
 
 class ScreenTimeLog(db.Model):
-    """
-    Screen time entries - for home page
-
-    Simple integer IDs: 1, 2, 3, 4...
-    """
+    """Per-day screen time entries keyed to an app (or total)."""
 
     __tablename__ = "screen_time_logs"
 
@@ -73,7 +130,13 @@ class ScreenTimeLog(db.Model):
 
     created_at = db.Column(db.DateTime, default=current_time_utc)
 
-    def to_dict(self):
+    def to_dict(self) -> dict:
+        """Serialize the log for API responses.
+
+        Returns:
+            dict: Log metadata plus derived hour/minute fields.
+        """
+
         return {
             "id": self.id,
             "user_id": self.user_id,
@@ -82,7 +145,9 @@ class ScreenTimeLog(db.Model):
             "screen_time_minutes": self.screen_time_minutes,
             "hours": self.screen_time_minutes // 60,
             "minutes": self.screen_time_minutes % 60,
-            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "created_at": (
+                self.created_at.isoformat() if self.created_at else None
+            ),
         }
 
     def __repr__(self):
@@ -90,11 +155,7 @@ class ScreenTimeLog(db.Model):
 
 
 class Goal(db.Model):
-    """
-    User goals - daily/weekly limits for home page
-
-    Simple integer IDs: 1, 2, 3, 4...
-    """
+    """Daily/weekly screen-time goals."""
 
     __tablename__ = "goals"
 
@@ -105,7 +166,9 @@ class Goal(db.Model):
     goal_type = db.Column(db.String(20), nullable=False)  # 'daily' or 'weekly'
     target_minutes = db.Column(db.Integer, nullable=False)
 
-    def to_dict(self):
+    def to_dict(self) -> dict:
+        """Serialize goal metadata for API responses."""
+
         return {
             "id": self.id,
             "user_id": self.user_id,
@@ -118,23 +181,25 @@ class Goal(db.Model):
 
 
 class Friendship(db.Model):
-    """
-    Friend connections - for leaderboard page
-
-    Simple integer IDs: 1, 2, 3, 4...
-    """
+    """Friend relationships used by leaderboard features."""
 
     __tablename__ = "friendships"
 
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
-    friend_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    friend_id = db.Column(
+        db.Integer,
+        db.ForeignKey("users.id"),
+        nullable=False,
+    )
 
     # Status of friendship
     status = db.Column(db.String(20), default="pending")  # pending/accepted
     created_at = db.Column(db.DateTime, default=current_time_utc)
 
-    def to_dict(self):
+    def to_dict(self) -> dict:
+        """Serialize friendship metadata for API responses."""
+
         return {
             "id": self.id,
             "user_id": self.user_id,
@@ -144,4 +209,6 @@ class Friendship(db.Model):
         }
 
     def __repr__(self):
-        return f"<Friendship {self.user_id} -> {self.friend_id}: {self.status}>"
+        return (
+            f"<Friendship {self.user_id} -> {self.friend_id}: {self.status}>"
+        )

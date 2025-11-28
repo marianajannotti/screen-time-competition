@@ -1,7 +1,6 @@
-"""
-Backend package for Screen Time Competition
-Flask app factory pattern with environment variables
-"""
+"""Flask application factory and extension wiring for the backend."""
+
+from __future__ import annotations
 
 from flask import Flask
 from flask_login import LoginManager
@@ -16,16 +15,21 @@ from .database import db
 load_dotenv()
 
 
-# Initialize extensions 
+# Initialize extensions
 login_manager = LoginManager()
 
 
-def create_app(config_name=None):
+def create_app(config_name: str | None = None) -> Flask:
+    """Build and configure a Flask app instance.
+
+    Args:
+        config_name (str | None): Optional config key; falls back to
+            ``FLASK_ENV`` or ``development`` when missing.
+
+    Returns:
+        Flask: Configured application with extensions and blueprints.
     """
-    Application factory pattern
-    Creates and configures the Flask app
-    """
-    # Create Flask app
+
     app = Flask(__name__)
 
     # Load configuration
@@ -50,8 +54,16 @@ def create_app(config_name=None):
     from .models import User
 
     @login_manager.user_loader
-    def load_user(user_id):
-        """Load user for Flask-Login"""
+    def load_user(user_id: str):
+        """Look up the session user for Flask-Login callbacks.
+
+        Args:
+            user_id (str): Identifier stored in the session cookie.
+
+        Returns:
+            User | None: Matching user instance when found.
+        """
+
         return User.query.get(int(user_id))
 
     # Register blueprints

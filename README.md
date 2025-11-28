@@ -47,6 +47,7 @@ A web application for friendly screen time competition - track daily usage, set 
 - **Flask + SQLAlchemy** - Clean API structure with SQLite database
 - **CORS Support** - Ready for React frontend
 - **Screen Time Logging** - Capture daily app usage entries with validation helpers
+- **Canonical App Dropdown** - Backend enforces a curated list to avoid typos
 
 ### API Endpoints
 - `POST /api/auth/register` - Create account
@@ -56,6 +57,10 @@ A web application for friendly screen time competition - track daily usage, set 
 - `POST /api/auth/logout` - Logout
 - `POST /api/screen-time/` - Save a screen time entry
 - `GET /api/screen-time/` - List recent entries for the signed-in user
+- `GET /api/screen-time/apps` - Fetch the canonical list of app names for dropdowns
+
+#### Allowed App Names
+To keep UX simple and typo-free, `app_name` must be one of the curated values returned by `GET /api/screen-time/apps`. If `app_name` is omitted or blank, the backend automatically records the entry against `"Total"`.
 
 ### Screen Time API Usage
 
@@ -72,9 +77,26 @@ curl -X POST "http://127.0.0.1:5000/api/screen-time/" \
    }'
 ```
 
+To log total screen time without specifying an app, omit `app_name`:
+
+```bash
+curl -X POST "http://127.0.0.1:5000/api/screen-time/" \
+   -H "Content-Type: application/json" \
+   -b cookies.txt \
+   -d '{
+      "hours": 2,
+      "minutes": 10
+   }'
+```
+
 #### 2. Fetch Recent Entries (authenticated)
 ```bash
 curl -s "http://127.0.0.1:5000/api/screen-time/?limit=10" -b cookies.txt
+```
+
+#### 3. Fetch Allowed Apps (public)
+```bash
+curl -s "http://127.0.0.1:5000/api/screen-time/apps"
 ```
 
 ## 🧪 Testing the Backend
