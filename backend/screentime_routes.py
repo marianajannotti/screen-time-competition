@@ -1,6 +1,29 @@
 """
-Screen Time Routes for Manual Input
-Handles manual screen time logging and tracking
+Screen Time Routes for Manual Logging and Analytics
+
+This module provides API endpoints for users to manually log their daily screen time
+and retrieve usage analytics. It supports detailed app-level tracking and integrates
+with the gamification system for streaks and points.
+
+Key Features:
+- Manual screen time entry with date selection
+- Detailed app usage breakdown (optional)
+- Automatic streak and points calculation 
+- Historical data retrieval and analytics
+- Weekly/monthly statistics generation
+- Data validation and error handling
+
+Integration Points:
+- Calls BusinessLogicService to update user streaks and points
+- Uses ValidationService for comprehensive input validation
+- Updates gamification stats automatically on new entries
+- Supports both daily totals and per-app breakdowns
+
+API Endpoints:
+- POST /api/screentime/log - Log screen time for a date
+- GET /api/screentime/history - Retrieve historical logs
+- GET /api/screentime/stats/weekly - Get weekly analytics
+- GET /api/screentime/stats/monthly - Get monthly analytics
 """
 
 from flask import Blueprint, request, jsonify
@@ -8,9 +31,12 @@ from flask_login import login_required, current_user
 from datetime import datetime, date, timedelta
 from .database import db
 from .models import ScreenTimeLog
+from .business_logic import BusinessLogicService
+from .validation import ValidationService
 import json
 
-# Create blueprint
+# Create screen time blueprint with URL prefix
+# All routes in this blueprint will be prefixed with /api/screentime
 screentime_bp = Blueprint("screentime", __name__, url_prefix="/api/screentime")
 
 
@@ -18,18 +44,57 @@ screentime_bp = Blueprint("screentime", __name__, url_prefix="/api/screentime")
 @login_required
 def log_screen_time():
     """
-    Log screen time for a specific date
+    Screen Time Logging Endpoint
     
-    Expected JSON:
-    {
-        "date": "2024-01-15",  # optional, defaults to today
-        "screen_time_minutes": 180,
-        "top_apps": [  # optional
-            {"name": "Instagram", "minutes": 60},
-            {"name": "TikTok", "minutes": 45},
-            {"name": "YouTube", "minutes": 30}
-        ]
-    }
+    Allows users to manually log their screen time for a specific date. Supports
+    both total daily screen time and detailed per-app breakdowns. Automatically
+    updates user streaks and points when new entries are created.
+    
+    Expected Request:
+        Method: POST
+        Authentication: Required (valid session)
+        Content-Type: application/json
+        Body: {
+            "date": "2024-01-15",        # optional, defaults to today (YYYY-MM-DD format)
+            "screen_time_minutes": 180,  # required, total minutes (non-negative integer)
+            "top_apps": [               # optional, detailed app usage breakdown
+                {"name": "Instagram", "minutes": 60},
+                {"name": "TikTok", "minutes": 45},
+                {"name": "YouTube", "minutes": 30}
+            ]
+        }
+    
+    Validation Rules:
+    - screen_time_minutes: Required, non-negative integer
+    - date: Optional, must be valid YYYY-MM-DD format if provided
+    - top_apps: Optional array of objects with 'name' and 'minutes' fields
+    - Each app in top_apps must have non-negative minutes
+    - One entry per user per date (updates existing if present)
+    
+    Business Logic Integration:
+    - Automatically calculates and updates user streak count
+    - Recalculates total points based on new activity
+    - Awards points for daily logging and goal achievements
+    - Updates gamification stats in real-time
+    
+    Success Response (200 for update, 201 for new):
+        {
+            "message": "Screen time logged successfully",
+            "data": {
+                "id": 123,
+                "user_id": 456,
+                "date": "2024-01-15", 
+                "screen_time_minutes": 180,
+                "top_apps": [...],
+                "created_at": "2024-01-15T12:00:00",
+                "updated_at": "2024-01-15T12:00:00"
+            }
+        }
+    
+    Error Responses:
+        400: Invalid input data or validation failure
+        401: User not authenticated
+        500: Internal server error during logging
     """
     try:
         data = request.get_json()
@@ -82,6 +147,12 @@ def log_screen_time():
             existing_log.updated_at = datetime.utcnow()
             db.session.commit()
             
+            # Update user gamification stats (streak & points)
+            try:
+                BusinessLogicService.update_user_gamification_stats(current_user.id)
+            except Exception as e:
+                print(f"Warning: Failed to update gamification stats: {e}")
+            
             return jsonify({
                 "message": "Screen time updated successfully",
                 "data": existing_log.to_dict()
@@ -97,6 +168,12 @@ def log_screen_time():
             
             db.session.add(new_log)
             db.session.commit()
+            
+            # Update user gamification stats (streak & points)
+            try:
+                BusinessLogicService.update_user_gamification_stats(current_user.id)
+            except Exception as e:
+                print(f"Warning: Failed to update gamification stats: {e}")
             
             return jsonify({
                 "message": "Screen time logged successfully",
