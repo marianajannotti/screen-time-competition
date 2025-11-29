@@ -104,11 +104,13 @@ export function computeMonthlyStatsForUser(userId) {
                 .reduce((acc, [, min]) => acc + min, 0)
         if (total <= dailyGoal && total > 0) {
           currentStreak++
-          if (currentStreak > maxStreak) maxStreak = currentStreak
         } else {
+          maxStreak = Math.max(maxStreak, currentStreak)
           currentStreak = 0
         }
       })
+      // Update maxStreak for the final consecutive sequence
+      maxStreak = Math.max(maxStreak, currentStreak)
     }
     const avgPerDay = daysWithLogs > 0 ? totalMinutes / daysWithLogs : undefined
     return { avgPerDay, streak: maxStreak }

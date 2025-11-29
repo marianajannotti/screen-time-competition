@@ -98,7 +98,7 @@ export default function Leaderboard(){
               <div key={pos} className={`podium-col ${pos}`}> 
                 <div className={`podium-block ${pos}`}> 
                   <div className="rank-badge">{pos==='first'?1:pos==='second'?2:3}</div>
-                  <div className="avatar tiny"><span className="initials">{p ? ((p.username?.[0] || '?').toUpperCase()) : pos[0].toUpperCase()}</span></div>
+                  <div className="avatar tiny"><span className="initials">{p?.username?.[0]?.toUpperCase() || (p ? '?' : pos[0].toUpperCase())}</span></div>
                   <div className="name">{p? p.username : pos.charAt(0).toUpperCase()+pos.slice(1)}</div>
                   <div className="metric">{p? (p._avg!==undefined ? minutesLabel(p._avg) : '—') : '—'}</div>
                   {pos==='first' && <div className="crown" aria-hidden="true">👑</div>}
