@@ -8,13 +8,16 @@ function minutesLabel(mins) {
   return `${h}h ${m}m`
 }
 
-function ProgressBar({ value, max, color }) {
+function ProgressBar({ value, max, color, exceeded }) {
   const pct = max > 0 ? Math.min(100, (value / max) * 100) : 0
+  const actualPct = max > 0 ? (value / max) * 100 : 0
+  const fillColor = exceeded ? '#ef4444' : color
+  const label = exceeded ? `${Math.round(actualPct - 100)}% exceeded` : `${Math.round(pct)}%`
   return (
-    <div className="progress-bar" aria-label={`Progress ${Math.round(pct)}%`}>
+    <div className="progress-bar" aria-label={`Progress ${Math.round(actualPct)}%`}>
       <div className="track" />
-      <div className="fill" style={{ width: pct + '%', background: color }} />
-      <div className="pct-label">{Math.round(pct)}%</div>
+      <div className="fill" style={{ width: pct + '%', background: fillColor }} />
+      <div className="pct-label">{label}</div>
     </div>
   )
 }
@@ -241,7 +244,7 @@ export default function Dashboard() {
     <main className="dashboard-main">
       <div className="dashboard-grid">
         <aside className="left-rail">
-      <div className="metric-card">
+      <div className="metric-card" style={dailyGoal !== undefined && dailyUsed > dailyGoal ? {backgroundColor: '#fee2e2'} : {}}>
             <div className="card-head">
               <span className="icon clock" />
               <span className="title">Daily Limit</span>
@@ -251,7 +254,7 @@ export default function Dashboard() {
               <p className="muted small" style={{margin:0}}>Create a new limit by clicking +</p>
             ) : (
               <>
-                <ProgressBar value={dailyUsed || 0} max={dailyGoal} color="#d97706" />
+                <ProgressBar value={dailyUsed || 0} max={dailyGoal} color="#d97706" exceeded={dailyUsed > dailyGoal} />
                 <div className="sub-row">
                   <span>{dailyUsed ? minutesLabel(dailyUsed) + ' used' : 'Log your hours'}</span>
                   <span>{minutesLabel(dailyGoal)} goal</span>
@@ -259,7 +262,7 @@ export default function Dashboard() {
               </>
             )}
           </div>
-          <div className="metric-card">
+          <div className="metric-card" style={weeklyGoal !== undefined && weeklyUsed > weeklyGoal ? {backgroundColor: '#fee2e2'} : {}}>
             <div className="card-head">
               <span className="icon target" />
               <span className="title">Weekly Goal</span>
@@ -269,7 +272,7 @@ export default function Dashboard() {
               <p className="muted small" style={{margin:0}}>Create a new goal by clicking +</p>
             ) : (
               <>
-                <ProgressBar value={weeklyUsed || 0} max={weeklyGoal} color="#16a34a" />
+                <ProgressBar value={weeklyUsed || 0} max={weeklyGoal} color="#16a34a" exceeded={weeklyUsed > weeklyGoal} />
                 <div className="sub-row">
                   <span>{weeklyUsed ? minutesLabel(weeklyUsed) + ' used' : 'Log your hours'}</span>
                   <span>{minutesLabel(weeklyGoal)} goal</span>
