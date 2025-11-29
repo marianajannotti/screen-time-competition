@@ -102,6 +102,16 @@ export default function Profile() {
     return () => window.removeEventListener('keydown', handleEscape)
   }, [modalOpen])
 
+  // Memoize filtered badge lists
+  const unlockedBadges = useMemo(
+    () => ALL_BADGES.filter((b) => ownedSet.has(b.name)),
+    [ownedSet]
+  )
+  const lockedBadges = useMemo(
+    () => ALL_BADGES.filter((b) => !ownedSet.has(b.name)),
+    [ownedSet]
+  )
+
   return (
     <main>
       {/* Hero section */}
@@ -141,9 +151,8 @@ export default function Profile() {
           <h3 className="badges-subtitle">Unlocked</h3>
         </div>
         <div className="badges-grid">
-          {ALL_BADGES
-            .filter((b) => ownedSet.has(b.name))
-            .slice(0, showAllUnlocked ? ALL_BADGES.length : 6)
+          {unlockedBadges
+            .slice(0, showAllUnlocked ? unlockedBadges.length : 6)
             .map((b) => (
               <div
                 key={b.name}
@@ -167,7 +176,7 @@ export default function Profile() {
               </div>
             ))}
         </div>
-        {ALL_BADGES.filter((b) => ownedSet.has(b.name)).length > 6 && (
+        {unlockedBadges.length > 6 && (
           <div className="see-more-row">
             <button type="button" className="btn-link" onClick={() => setShowAllUnlocked((v) => !v)}>
               {showAllUnlocked ? 'See less' : 'See more'}
@@ -180,9 +189,8 @@ export default function Profile() {
           <h3 className="badges-subtitle">Locked</h3>
         </div>
         <div className="badges-grid">
-          {ALL_BADGES
-            .filter((b) => !ownedSet.has(b.name))
-            .slice(0, showAllLocked ? ALL_BADGES.length : 4)
+          {lockedBadges
+            .slice(0, showAllLocked ? lockedBadges.length : 4)
             .map((b) => (
               <div
                 key={b.name}
