@@ -48,7 +48,7 @@ function WeeklyChart({ days, chartData, colors, appColorMap }) {
           const segments = Object.entries(apps)
           return (
             <g key={day} className="bar-group" data-day={day}>
-      {segments.map(([app, minutes], idx) => {
+              {segments.map(([app, minutes], idx) => {
                 const h = (minutes / max) * (height - 30)
                 const y = yBase - yOffset - h
                 yOffset += h
@@ -59,7 +59,7 @@ function WeeklyChart({ days, chartData, colors, appColorMap }) {
                     y={y}
                     width={barW}
                     height={h}
-        fill={appColorMap[app] || colors[idx % colors.length]}
+                    fill={appColorMap[app] || colors[idx % colors.length]}
                     data-app={app}
                     data-minutes={minutes}
                     className="bar-segment"
@@ -68,7 +68,13 @@ function WeeklyChart({ days, chartData, colors, appColorMap }) {
                       if (!tt) return
                       const appName = e.target.getAttribute('data-app')
                       const mins = Number(e.target.getAttribute('data-minutes'))
-                      tt.innerHTML = `<strong>${day}</strong><div>${appName}: ${minutesLabel(mins)}</div>`
+                      tt.textContent = ''
+                      const strong = document.createElement('strong')
+                      strong.textContent = day
+                      const div = document.createElement('div')
+                      div.textContent = appName + ': ' + minutesLabel(mins)
+                      tt.appendChild(strong)
+                      tt.appendChild(div)
                       tt.style.display = 'block'
                       const rect = e.target.getBoundingClientRect()
                       tt.style.left = (e.clientX - rect.left + 20) + 'px'
@@ -90,7 +96,7 @@ function WeeklyChart({ days, chartData, colors, appColorMap }) {
             </g>
           )
         })}
-  <text x={4} y={14} fontSize="12" fill="#666">hours</text>
+        <text x={4} y={14} fontSize="12" fill="#666">hours</text>
       </svg>
       <div className="chart-tooltip" id="chartTooltip" style={{display:'none'}} />
     </div>
@@ -200,7 +206,7 @@ export default function Dashboard() {
             <div className="card-head">
               <span className="icon clock" />
               <span className="title">Daily Limit</span>
-        <button className="add-btn" aria-label="Add daily goal" onClick={()=>setShowDailyModal(true)}>+</button>
+        <button className="add-btn" aria-label="Add daily goal" title="Add daily goal" onClick={()=>setShowDailyModal(true)}>+</button>
             </div>
             {dailyGoal === undefined ? (
               <p className="muted small" style={{margin:0}}>Create a new limit by clicking +</p>
@@ -218,7 +224,7 @@ export default function Dashboard() {
             <div className="card-head">
               <span className="icon target" />
               <span className="title">Weekly Goal</span>
-        <button className="add-btn" aria-label="Add weekly goal" onClick={()=>setShowWeeklyModal(true)}>+</button>
+        <button className="add-btn" aria-label="Add weekly goal" title="Add weekly goal" onClick={()=>setShowWeeklyModal(true)}>+</button>
             </div>
             {weeklyGoal === undefined ? (
               <p className="muted small" style={{margin:0}}>Create a new goal by clicking +</p>
@@ -287,8 +293,8 @@ export default function Dashboard() {
 }
 
 function GoalModal({ title, initialMinutes, onClose, onSave }) {
-  const initH = Math.floor(initialMinutes / 60)
-  const initM = initialMinutes % 60
+  const initH = initialMinutes ? Math.floor(initialMinutes / 60) : 0
+  const initM = initialMinutes ? initialMinutes % 60 : 0
   const [hours, setHours] = useState(initH)
   const [minutes, setMinutes] = useState(initM)
   const [error, setError] = useState(null)
