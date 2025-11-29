@@ -53,15 +53,15 @@ export default function AddScreenTime() {
 
   function resolveDuplicate(replace) {
     if (!dupTarget) return
-    const storageKey = `offy_logs_${user.user_id}`
-    const existingRaw = localStorage.getItem(storageKey)
-    const arr = existingRaw ? JSON.parse(existingRaw) : []
-    const idx = arr.findIndex(l => l.date === dupTarget.date && l.app === dupTarget.app)
-    if (idx !== -1) {
-      if (replace) {
+    if (replace) {
+      const storageKey = `offy_logs_${user.user_id}`
+      const existingRaw = localStorage.getItem(storageKey)
+      const arr = existingRaw ? JSON.parse(existingRaw) : []
+      const idx = arr.findIndex(l => l.date === dupTarget.date && l.app === dupTarget.app)
+      if (idx !== -1) {
         arr[idx].minutes = pendingMinutes
+        localStorage.setItem(storageKey, JSON.stringify(arr))
       }
-      localStorage.setItem(storageKey, JSON.stringify(arr))
     }
     setDupTarget(null)
     setPendingMinutes(null)
@@ -102,7 +102,7 @@ export default function AddScreenTime() {
               <option value="Safari">Safari</option>
               <option value="Messages">Messages</option>
             </select>
-            <small className="muted" style={{marginTop:2}}>If you want to log in your total screen time, choose that option</small>
+            <small className="muted" style={{marginTop:2}}>If you want to log your total screen time, choose that option</small>
           </label>
 
           <div style={{display:'flex',gap:12}}>
