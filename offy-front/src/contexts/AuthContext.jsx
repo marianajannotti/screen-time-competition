@@ -16,9 +16,10 @@ export function AuthProvider({ children }) {
   // Track last auth-related error to surface in UI if desired
   const [authError, setAuthError] = useState(null)
 
-  // `loading` tracks whether we are in the middle of:
-// 1. Checking if a session cookie exists (app startup)
-// 2. Logging in / logging out / registering
+  /* `loading` tracks whether we are in the middle of:
+   * 1. Checking if a session cookie exists (app startup)
+   * 2. Logging in / logging out / registering
+   */
   const [loading, setLoading] = useState(true)
 
   // When the provider mounts (on page load), we immediately check

@@ -25,7 +25,7 @@ const GET_HEADERS = {
 export async function register({ username, email, password }) {
   const response = await fetch(`${API_BASE}/api/auth/register`, {
     method: 'POST',
-  headers: JSON_HEADERS,
+    headers: JSON_HEADERS,
     credentials: 'include', // Important for session cookies
     body: JSON.stringify({ username, email, password }),
   });
@@ -49,7 +49,7 @@ export async function register({ username, email, password }) {
 export async function login({ username, password }) {
   const response = await fetch(`${API_BASE}/api/auth/login`, {
     method: 'POST',
-  headers: JSON_HEADERS,
+    headers: JSON_HEADERS,
     credentials: 'include',
     body: JSON.stringify({ username, password }),
   });
@@ -70,7 +70,7 @@ export async function login({ username, password }) {
 export async function logout() {
   const response = await fetch(`${API_BASE}/api/auth/logout`, {
     method: 'POST',
-  headers: JSON_HEADERS,
+    headers: JSON_HEADERS,
     credentials: 'include',
   });
 
@@ -90,7 +90,7 @@ export async function logout() {
 export async function getCurrentUser() {
   const response = await fetch(`${API_BASE}/api/auth/me`, {
     method: 'GET',
-  headers: GET_HEADERS,
+    headers: GET_HEADERS,
     credentials: 'include',
   });
 
@@ -110,7 +110,7 @@ export async function getCurrentUser() {
 export async function getAuthStatus() {
   const response = await fetch(`${API_BASE}/api/auth/status`, {
     method: 'GET',
-  headers: GET_HEADERS,
+    headers: GET_HEADERS,
     credentials: 'include',
   });
 
