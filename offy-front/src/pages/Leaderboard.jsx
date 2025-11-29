@@ -5,6 +5,7 @@ import {
   minutesLabel,
   computeMonthlyStatsForUser,
   seedMonthlyMockData,
+  resetAllMockData,
 } from '../api/mockApi'
 
 export default function Leaderboard(){
@@ -88,27 +89,35 @@ export default function Leaderboard(){
         {!loading && tab==='friends' && rankedFriends.length===0 && (
           <div className="lb-empty">Add friends to see them in the leaderboard!</div>
         )}
-            <div className="lb-podium refined">
-              {['second','first','third'].map((pos) => {
-                const rankMap = { first:0, second:1, third:2 }
-                const dataIndex = rankMap[pos]
-                const p = podium[dataIndex]
-                return (
-                  <div key={pos} className={`podium-col ${pos}`}> 
-                    <div className={`podium-block ${pos}`}> 
-                      <div className="rank-badge">{pos==='first'?1:pos==='second'?2:3}</div>
-                      <div className="avatar tiny"><span className="initials">{p? (p.username?.[0]||'?').toUpperCase() : pos[0].toUpperCase()}</span></div>
-                      <div className="name">{p? p.username : pos.charAt(0).toUpperCase()+pos.slice(1)}</div>
-                      <div className="metric">{p? (p._avg!==undefined ? minutesLabel(p._avg) : '—') : '—'}</div>
-                      {pos==='first' && <div className="crown" aria-hidden="true">👑</div>}
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
+        <div className="lb-podium refined">
+          {['second','first','third'].map((pos) => {
+            const rankMap = { first:0, second:1, third:2 }
+            const dataIndex = rankMap[pos]
+            const p = podium[dataIndex]
+            return (
+              <div key={pos} className={`podium-col ${pos}`}> 
+                <div className={`podium-block ${pos}`}> 
+                  <div className="rank-badge">{pos==='first'?1:pos==='second'?2:3}</div>
+                  <div className="avatar tiny"><span className="initials">{p ? ((p.username?.[0] || '?').toUpperCase()) : pos[0].toUpperCase()}</span></div>
+                  <div className="name">{p? p.username : pos.charAt(0).toUpperCase()+pos.slice(1)}</div>
+                  <div className="metric">{p? (p._avg!==undefined ? minutesLabel(p._avg) : '—') : '—'}</div>
+                  {pos==='first' && <div className="crown" aria-hidden="true">👑</div>}
+                </div>
+              </div>
+            )
+          })}
+        </div>
         {!loading && list.length>0 && (
           <div className="lb-table-wrapper">
             <table className="lb-table">
+              <thead>
+                <tr>
+                  <th scope="col" className="rank">Rank</th>
+                  <th scope="col" className="name">Name</th>
+                  <th scope="col" className="metric">Avg. Screen Time</th>
+                  <th scope="col" className="streak">Streak</th>
+                </tr>
+              </thead>
               <tbody>
                 {remainder.map((u,idx)=>{
                   const rank = idx + 4
@@ -117,8 +126,8 @@ export default function Leaderboard(){
                     <tr key={u.user_id} className={isSelf? 'self':''}>
                       <td className="rank">{rank}</td>
                       <td className="name">{isSelf? 'You' : u.username}</td>
-                        <td className="metric">{u._avg!==undefined ? minutesLabel(u._avg) : '—'}</td>
-                        <td className="streak">{(u._streak||0)} day streak</td>
+                      <td className="metric">{u._avg!==undefined ? minutesLabel(u._avg) : '—'}</td>
+                      <td className="streak">{(u._streak||0)} day streak</td>
                     </tr>
                   )
                 })}
@@ -135,12 +144,18 @@ export default function Leaderboard(){
       </div>
       {showModal && (
         <div className="modal-backdrop" style={{zIndex:70}}>
-          <div className="modal" style={{maxWidth:520}}>
+          <div
+            className="modal"
+            style={{maxWidth:520}}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="add-friends-modal-title"
+          >
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}>
-              <h3 style={{margin:0}}>Add Friends</h3>
-              <button onClick={()=>setShowModal(false)} style={{background:'transparent',border:'none',fontSize:18}}>✕</button>
+              <h3 id="add-friends-modal-title" style={{margin:0}}>Add Friends</h3>
+              <button aria-label="Close modal" onClick={()=>setShowModal(false)} style={{background:'transparent',border:'none',fontSize:18}}>✕</button>
             </div>
-            <input type="text" placeholder="Search username" value={search} onChange={e=>setSearch(e.target.value)} />
+            <input type="text" placeholder="Search username" aria-label="Search username" value={search} onChange={e=>setSearch(e.target.value)} />
             <div style={{marginTop:14,maxHeight:300,overflow:'auto',display:'grid',gap:10}}>
               {filteredAddable.map(u=> (
                 <div key={u.user_id} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'10px 12px',border:'1px solid #eee',borderRadius:10}}>
@@ -157,7 +172,7 @@ export default function Leaderboard(){
         </div>
       )}
       <div style={{display:'flex',justifyContent:'center',marginTop:14}}>
-        <button className="btn-ghost" onClick={()=>{localStorage.removeItem('offy_mock_db_v1'); ['u1','u2','u3','u4','u5','u6','u7','u8'].forEach(id=>localStorage.removeItem(`offy_logs_${id}`)); seedMonthlyMockData(); window.location.reload()}}>Reset Mock Data</button>
+        <button className="btn-ghost" onClick={()=>{resetAllMockData(); seedMonthlyMockData(); window.location.reload()}}>Reset Mock Data</button>
       </div>
     </main>
   )
