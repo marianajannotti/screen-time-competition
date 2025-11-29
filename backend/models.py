@@ -22,6 +22,10 @@ class User(UserMixin, db.Model):
     streak_count = db.Column(db.Integer, default=0)
     total_points = db.Column(db.Integer, default=0)
 
+    # Password reset
+    reset_token = db.Column(db.String(100), nullable=True)
+    reset_token_expiry = db.Column(db.DateTime, nullable=True)
+
     created_at = db.Column(db.DateTime, default=current_time_utc)
 
     def get_id(self) -> str:
