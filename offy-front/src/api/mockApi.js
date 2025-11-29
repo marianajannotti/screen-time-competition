@@ -9,11 +9,11 @@ const initial = {
     { user_id: 'u1', username: 'demo', email: 'demo@example.com', profile_picture: '', streak_count: 2, total_points: 120 },
     { user_id: 'u2', username: 'marcelo', email: 'marcelo@example.com', profile_picture: '', streak_count: 8, total_points: 360 },
     { user_id: 'u3', username: 'luana', email: 'luana@example.com', profile_picture: '', streak_count: 5, total_points: 290 },
-      { user_id: 'u4', username: 'sofia', email: 'sofia@example.com', profile_picture: '', streak_count: 1, total_points: 130 },
-      { user_id: 'u5', username: 'paul', email: 'paul@example.com', profile_picture: '', streak_count: 10, total_points: 80 },
-      { user_id: 'u6', username: 'robert', email: 'robert@example.com', profile_picture: '', streak_count: 7, total_points: 92 },
-      { user_id: 'u7', username: 'gwen', email: 'gwen@example.com', profile_picture: '', streak_count: 11, total_points: 75 },
-      { user_id: 'u8', username: 'emma', email: 'emma@example.com', profile_picture: '', streak_count: 3, total_points: 140 },
+    { user_id: 'u4', username: 'sofia', email: 'sofia@example.com', profile_picture: '', streak_count: 1, total_points: 130 },
+    { user_id: 'u5', username: 'paul', email: 'paul@example.com', profile_picture: '', streak_count: 10, total_points: 80 },
+    { user_id: 'u6', username: 'robert', email: 'robert@example.com', profile_picture: '', streak_count: 7, total_points: 92 },
+    { user_id: 'u7', username: 'gwen', email: 'gwen@example.com', profile_picture: '', streak_count: 11, total_points: 75 },
+    { user_id: 'u8', username: 'emma', email: 'emma@example.com', profile_picture: '', streak_count: 3, total_points: 140 },
   ],
   screenTimeLogs: [],
   goals: [],
@@ -84,25 +84,36 @@ export function computeMonthlyStatsForUser(userId) {
         daysWithLogs++
       }
     })
-    // streak: days reaching daily goal this month
+    // streak: longest consecutive days reaching daily goal this month
     const goalRaw = localStorage.getItem(`offy_${userId}_daily_goal`)
     const dailyGoal = goalRaw ? Number(goalRaw) : undefined
-    let streak = 0
+    let maxStreak = 0
+    let currentStreak = 0
     if (dailyGoal !== undefined) {
       days.forEach((d) => {
         const dayApps = byDay[d]
-        if (!dayApps) return
+        if (!dayApps) {
+          currentStreak = 0
+          return
+        }
         const total =
           dayApps['__TOTAL__'] !== undefined
             ? dayApps['__TOTAL__']
             : Object.entries(dayApps)
                 .filter(([a]) => a !== '__TOTAL__')
                 .reduce((acc, [, min]) => acc + min, 0)
-        if (total <= dailyGoal && total > 0) streak++
+        if (total <= dailyGoal && total > 0) {
+          currentStreak++
+        } else {
+          maxStreak = Math.max(maxStreak, currentStreak)
+          currentStreak = 0
+        }
       })
+      // Update maxStreak for the final consecutive sequence
+      maxStreak = Math.max(maxStreak, currentStreak)
     }
     const avgPerDay = daysWithLogs > 0 ? totalMinutes / daysWithLogs : undefined
-    return { avgPerDay, streak }
+    return { avgPerDay, streak: maxStreak }
   } catch {
     return { avgPerDay: undefined, streak: 0 }
   }
@@ -214,6 +225,22 @@ export function _resetMockDb() {
   save(initial)
 }
 
+// Reset all mock data including user logs
+export function resetAllMockData() {
+  localStorage.removeItem(STORAGE_KEY)
+  const db = load()
+  // Clear all user-specific logs
+  if (db && db.users) {
+    db.users.forEach((u) => {
+      localStorage.removeItem(`offy_logs_${u.user_id}`)
+    })
+  }
+  // Also clear logs for initial users in case db was corrupted
+  initial.users.forEach((u) => {
+    localStorage.removeItem(`offy_logs_${u.user_id}`)
+  })
+}
+
 export default {
   signIn,
   signUp,
@@ -224,6 +251,7 @@ export default {
   getLeaderboard,
   getFriends,
   _resetMockDb,
+  resetAllMockData,
   // Leaderboard utilities
   minutesLabel,
   getMonthRange,
