@@ -1,5 +1,53 @@
-import React, { useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
+
+// Badge data derived from documentation/badges.md - moved outside component to avoid recreation on each render
+const ALL_BADGES = [
+  // Streak & Consistency
+  { name: 'Fresh Start', desc: 'Complete your first day meeting your screen-time goal.', type: 'streak' },
+  { name: 'Weekend Warrior', desc: 'Hit your goal on a Saturday and Sunday.', type: 'streak' },
+  { name: '7-Day Focus', desc: '7 days in a row hitting daily goal.', type: 'streak' },
+  { name: 'Habit Builder', desc: '14-day streak.', type: 'streak' },
+  { name: 'Unstoppable', desc: '30-day streak.', type: 'streak' },
+  { name: 'Bounce Back', desc: 'Lose a streak, then start a new one the next day.', type: 'streak' },
+  // Screen-Time Reduction
+  { name: 'Tiny Wins', desc: 'Reduce total time by 5% from your baseline week.', type: 'reduction' },
+  { name: 'The Declutter', desc: 'Reduce total screen time by 10% from baseline.', type: 'reduction' },
+  { name: 'Half-Life', desc: 'Reduce screen time by 50% from baseline.', type: 'reduction' },
+  { name: 'One Hour Club', desc: 'Stay under 1h of social media in a day.', type: 'reduction' },
+  { name: 'Digital Minimalist', desc: 'Average < 2 hours/day over a whole week.', type: 'reduction' },
+  // Social & Community
+  { name: 'Team Player', desc: 'Add your first friend.', type: 'social' },
+  { name: 'The Connector', desc: 'Add 10 friends.', type: 'social' },
+  { name: 'Challenge Accepted', desc: 'Join your first challenge.', type: 'social' },
+  { name: 'Friendly Rival', desc: 'Participate in 5 challenges.', type: 'social' },
+  { name: 'Community Champion', desc: 'Win a weekly challenge among friends.', type: 'social' },
+  // Leaderboard
+  { name: 'Top 10%', desc: 'Be in top 10% of the leaderboard in a week.', type: 'leaderboard' },
+  { name: 'Top 3', desc: 'Finish as #1, #2, or #3 among friends.', type: 'leaderboard' },
+  { name: 'The Phantom', desc: 'Win a challenge with the lowest screen time without chatting.', type: 'leaderboard' },
+  { name: 'Comeback Kid', desc: 'Go from bottom half to top 3 in the next challenge.', type: 'leaderboard' },
+  // Prestige / Long-Term
+  { name: 'Offline Legend', desc: 'Average < 2h/day for a full month.', type: 'prestige' },
+  { name: 'Master of Attention', desc: 'Maintain a 30-day goal streak and < 2h/day average.', type: 'prestige' },
+  { name: 'Life > Screen', desc: 'Complete a full 24h digital detox.', type: 'prestige' },
+]
+
+// Temporary mocked stats - moved outside component
+const MOCK_STATS = {
+  rank: 3,
+  streakDays: 8,
+  friends: 10,
+}
+
+// Badge icons by type for visual differentiation
+const BADGE_ICONS = {
+  streak: '🔥',
+  reduction: '📉',
+  social: '👥',
+  leaderboard: '🏆',
+  prestige: '⭐',
+}
 
 export default function Profile() {
   const { user } = useAuth()
@@ -20,60 +68,39 @@ export default function Profile() {
     return source.trim().charAt(0).toUpperCase()
   }, [user])
 
-  // Temporary mocked stats
-  const stats = {
-    rank: 3,
-    streakDays: 8,
-    friends: 10,
-  }
-
-  // Badge data derived from documentation/badges.md
-  const allBadges = [
-    // Streak & Consistency
-    { name: 'Fresh Start', desc: 'Complete your first day meeting your screen-time goal.', type: 'streak' },
-    { name: 'Weekend Warrior', desc: 'Hit your goal on a Saturday and Sunday.', type: 'streak' },
-    { name: '7-Day Focus', desc: '7 days in a row hitting daily goal.', type: 'streak' },
-    { name: 'Habit Builder', desc: '14-day streak.', type: 'streak' },
-    { name: 'Unstoppable', desc: '30-day streak.', type: 'streak' },
-    { name: 'Bounce Back', desc: 'Lose a streak, then start a new one the next day.', type: 'streak' },
-    // Screen-Time Reduction
-    { name: 'Tiny Wins', desc: 'Reduce total time by 5% from your baseline week.', type: 'reduction' },
-    { name: 'The Declutter', desc: 'Reduce total screen time by 10% from baseline.', type: 'reduction' },
-    { name: 'Half-Life', desc: 'Reduce screen time by 50% from baseline.', type: 'reduction' },
-    { name: 'One Hour Club', desc: 'Stay under 1h of social media in a day.', type: 'reduction' },
-    { name: 'Digital Minimalist', desc: 'Average < 2 hours/day over a whole week.', type: 'reduction' },
-    // Social & Community
-    { name: 'Team Player', desc: 'Add your first friend.', type: 'social' },
-    { name: 'The Connector', desc: 'Add 10 friends.', type: 'social' },
-    { name: 'Challenge Accepted', desc: 'Join your first challenge.', type: 'social' },
-    { name: 'Friendly Rival', desc: 'Participate in 5 challenges.', type: 'social' },
-    { name: 'Community Champion', desc: 'Win a weekly challenge among friends.', type: 'social' },
-    // Leaderboard
-    { name: 'Top 10%', desc: 'Be in top 10% of the leaderboard in a week.', type: 'leaderboard' },
-    { name: 'Top 3', desc: 'Finish as #1, #2, or #3 among friends.', type: 'leaderboard' },
-    { name: 'The Phantom', desc: 'Win a challenge with the lowest screen time without chatting.', type: 'leaderboard' },
-    { name: 'Comeback Kid', desc: 'Go from bottom half to top 3 in the next challenge.', type: 'leaderboard' },
-    // Prestige / Long-Term
-    { name: 'Offline Legend', desc: 'Average < 2h/day for a full month.', type: 'prestige' },
-    { name: 'Master of Attention', desc: 'Maintain a 30-day goal streak and < 2h/day average.', type: 'prestige' },
-    { name: 'Life > Screen', desc: 'Complete a full 24h digital detox.', type: 'prestige' },
-  ]
-
   // Simple owned mapping (mock): first few owned for demo
   const ownedSet = new Set(['7-Day Focus', 'Digital Minimalist', 'One Hour Club', 'Top 3'])
 
   const [modalOpen, setModalOpen] = useState(false)
   const [activeBadge, setActiveBadge] = useState(null)
   const [showAllLocked, setShowAllLocked] = useState(false)
+  const [showAllUnlocked, setShowAllUnlocked] = useState(false)
+  const triggerRef = useRef(null)
 
-  function openBadge(badge) {
+  function openBadge(badge, event) {
+    triggerRef.current = event?.currentTarget
     setActiveBadge(badge)
     setModalOpen(true)
   }
   function closeBadge() {
     setModalOpen(false)
     setActiveBadge(null)
+    // Restore focus to the triggering element
+    if (triggerRef.current) {
+      triggerRef.current.focus()
+      triggerRef.current = null
+    }
   }
+
+  // Handle Escape key to close modal
+  useEffect(() => {
+    if (!modalOpen) return
+    const handleEscape = (e) => {
+      if (e.key === 'Escape') closeBadge()
+    }
+    window.addEventListener('keydown', handleEscape)
+    return () => window.removeEventListener('keydown', handleEscape)
+  }, [modalOpen])
 
   return (
     <main>
@@ -90,17 +117,17 @@ export default function Profile() {
         <div className="profile-right">
           <div className="profile-stat">
             <div className="icon">🏆</div>
-            <div className="value">#{stats.rank}</div>
+            <div className="value">#{MOCK_STATS.rank}</div>
             <div className="label">Leaderboard</div>
           </div>
           <div className="profile-stat">
             <div className="icon">🔥</div>
-            <div className="value">{stats.streakDays}</div>
+            <div className="value">{MOCK_STATS.streakDays}</div>
             <div className="label">day streak</div>
           </div>
           <div className="profile-stat">
             <div className="icon">👥</div>
-            <div className="value">{stats.friends}</div>
+            <div className="value">{MOCK_STATS.friends}</div>
             <div className="label">friends</div>
           </div>
         </div>
@@ -110,26 +137,29 @@ export default function Profile() {
       <section className="card badges-section">
         <h2 className="badges-title">Badges</h2>
         {/* Unlocked */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', margin: '6px 6px 10px' }}>
+        <div className="badges-header">
           <h3 className="badges-subtitle">Unlocked</h3>
         </div>
         <div className="badges-grid">
-          {allBadges
+          {ALL_BADGES
             .filter((b) => ownedSet.has(b.name))
-            .slice(0, 6)
+            .slice(0, showAllUnlocked ? ALL_BADGES.length : 6)
             .map((b) => (
               <div
                 key={b.name}
                 className="badge-card owned"
-                onClick={() => openBadge(b)}
+                onClick={(e) => openBadge(b, e)}
                 role="button"
                 tabIndex={0}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') openBadge(b)
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault()
+                    openBadge(b, e)
+                  }
                 }}
                 aria-label={`View ${b.name} details`}
               >
-                <div className="badge-icon">🔥</div>
+                <div className="badge-icon">{BADGE_ICONS[b.type] || '🔥'}</div>
                 <div className="badge-info">
                   <div className="badge-name">{b.name}</div>
                   <div className="badge-date muted">{sampleDateFor(b.name)}</div>
@@ -137,28 +167,38 @@ export default function Profile() {
               </div>
             ))}
         </div>
+        {ALL_BADGES.filter((b) => ownedSet.has(b.name)).length > 6 && (
+          <div className="see-more-row">
+            <button type="button" className="btn-link" onClick={() => setShowAllUnlocked((v) => !v)}>
+              {showAllUnlocked ? 'See less' : 'See more'}
+            </button>
+          </div>
+        )}
 
         {/* Locked */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', margin: '14px 6px 10px' }}>
+        <div className="badges-header badges-header-locked">
           <h3 className="badges-subtitle">Locked</h3>
         </div>
         <div className="badges-grid">
-          {allBadges
+          {ALL_BADGES
             .filter((b) => !ownedSet.has(b.name))
-            .slice(0, showAllLocked ? allBadges.length : 5)
+            .slice(0, showAllLocked ? ALL_BADGES.length : 4)
             .map((b) => (
               <div
                 key={b.name}
                 className="badge-card locked"
-                onClick={() => openBadge(b)}
+                onClick={(e) => openBadge(b, e)}
                 role="button"
                 tabIndex={0}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') openBadge(b)
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault()
+                    openBadge(b, e)
+                  }
                 }}
                 aria-label={`View ${b.name} details`}
               >
-                <div className="badge-icon">🔒</div>
+                <div className="badge-icon locked-icon">🔒</div>
                 <div className="badge-info">
                   <div className="badge-name">{b.name}</div>
                   <div className="badge-date muted"></div>
@@ -167,7 +207,7 @@ export default function Profile() {
             ))}
         </div>
         <div className="see-more-row">
-          <button className="btn-link" onClick={() => setShowAllLocked((v) => !v)}>
+          <button type="button" className="btn-link" onClick={() => setShowAllLocked((v) => !v)}>
             {showAllLocked ? 'See less' : 'See more'}
           </button>
         </div>
@@ -175,12 +215,18 @@ export default function Profile() {
 
       {/* Badge detail modal */}
       {modalOpen && activeBadge && (
-        <div className="modal-backdrop" onClick={closeBadge}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <h3 style={{ marginTop: 0 }}>{activeBadge.name}</h3>
-            <p className="muted" style={{ marginTop: 8 }}>{activeBadge.desc}</p>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 16 }}>
-              <button className="btn-ghost" onClick={closeBadge}>Close</button>
+        <div className="modal-backdrop" onClick={closeBadge} aria-label="Close badge details">
+          <div 
+            className="modal" 
+            onClick={(e) => e.stopPropagation()} 
+            role="dialog" 
+            aria-modal="true" 
+            aria-labelledby="badge-modal-title"
+          >
+            <h3 id="badge-modal-title" className="modal-title">{activeBadge.name}</h3>
+            <p className="muted modal-desc">{activeBadge.desc}</p>
+            <div className="modal-actions">
+              <button type="button" className="btn-ghost" onClick={closeBadge}>Close</button>
             </div>
           </div>
         </div>

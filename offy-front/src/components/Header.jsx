@@ -31,6 +31,7 @@ export default function Header() {
               <div style={{display:'flex',alignItems:'center',gap:8}}>
                 {/* Make avatar clickable to go to profile */}
                 <button
+                  type="button"
                   aria-label="Open profile"
                   onClick={() => nav('/profile')}
                   className="header-avatar"
