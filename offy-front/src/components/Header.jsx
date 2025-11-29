@@ -29,7 +29,14 @@ export default function Header() {
           {user ? (
             <>
               <div style={{display:'flex',alignItems:'center',gap:8}}>
-                <div style={{width:36,height:36,borderRadius:18,background:'#ff8a00',display:'flex',alignItems:'center',justifyContent:'center',color:'#fff'}}>{user.username?.[0]?.toUpperCase()}</div>
+                {/* Make avatar clickable to go to profile */}
+                <button
+                  aria-label="Open profile"
+                  onClick={() => nav('/profile')}
+                  className="header-avatar"
+                >
+                  {user.username?.[0]?.toUpperCase()}
+                </button>
                 <button onClick={onSignOut} className="btn-ghost">Sign out</button>
               </div>
             </>

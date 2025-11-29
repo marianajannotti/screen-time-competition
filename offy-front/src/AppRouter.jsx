@@ -12,8 +12,9 @@ import PrivateRoute from './components/PrivateRoute'
 export default function AppRouter() {
   return (
     <BrowserRouter>
-      <Header />
-      <Routes>
+      <div className="app-shell">
+        <Header />
+        <Routes>
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
         <Route path="/signin" element={<SignIn />} />
         <Route path="/signup" element={<SignUp />} />
@@ -27,7 +28,9 @@ export default function AppRouter() {
         <Route path="/leaderboard" element={<PrivateRoute component={Leaderboard} />} />
 
         <Route path="*" element={<div style={{ padding: 20 }}>Not Found</div>} />
-      </Routes>
+        </Routes>
+        <footer className="global-footer muted">© 2025 Offy</footer>
+      </div>
     </BrowserRouter>
   )
 }
