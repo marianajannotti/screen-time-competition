@@ -134,6 +134,17 @@ pre{max-width:100%;overflow:auto;white-space:pre-wrap;word-wrap:break-word}
 .badge-card{display:flex;align-items:center;gap:12px;padding:16px;border-radius:14px;border:1px dashed #e2e8f0;background:linear-gradient(180deg,#fff,#fbfbff);cursor:pointer}
 .badge-card.owned{border:1px solid rgba(15,23,42,0.06);box-shadow:0 12px 26px rgba(56,47,84,0.08);background:linear-gradient(180deg,#fff,#fdf7f3)}
 .badge-card.locked{opacity:0.75}
+
+.badge-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 28px rgba(56,47,84,0.12);
+  transition: all 0.2s ease;
+}
+
+.badge-card:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
 .badge-icon{width:42px;height:42px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:linear-gradient(180deg,#f97316,#fb923c);color:#fff;font-size:22px;border:none;cursor:pointer}
 .badge-info{display:flex;flex-direction:column}
 .badge-name{font-weight:700}
