@@ -16,14 +16,21 @@ class Config:
     SQLALCHEMY_TRACK_MODIFICATIONS = False  # Saves memory
 
     # Allow React frontend to connect (CORS = Cross-Origin Resource Sharing)
-    CORS_ORIGINS = ["http://localhost:3000"]
+    # Include typical React dev ports (3000 Create React App, 5173/5174 Vite)
+    CORS_ORIGINS = [
+        "http://localhost:3000",
+        "http://localhost:5173",
+        "http://localhost:5174",
+    ]
 
 
 class DevelopmentConfig(Config):
     """Settings while you're coding"""
 
     DEBUG = True  # Show helpful error pages
-    SQLALCHEMY_DATABASE_URI = os.environ.get("DATABASE_URL") or "sqlite:///app.db"
+    SQLALCHEMY_DATABASE_URI = (
+        os.environ.get("DATABASE_URL") or "sqlite:///app.db"
+    )
 
 
 class TestingConfig(Config):
@@ -37,7 +44,9 @@ class ProductionConfig(Config):
     """Settings for live app (when you deploy)"""
 
     DEBUG = False  # Don't show errors to users
-    SQLALCHEMY_DATABASE_URI = os.environ.get("DATABASE_URL") or "sqlite:///app_prod.db"
+    SQLALCHEMY_DATABASE_URI = (
+        os.environ.get("DATABASE_URL") or "sqlite:///app_prod.db"
+    )
 
 
 # Easy way to pick which config to use

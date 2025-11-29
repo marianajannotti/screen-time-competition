@@ -5,13 +5,14 @@
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5001';
 
-// Default headers for all API requests
-const DEFAULT_HEADERS = {
+// Minimal headers to avoid unnecessary CORS complications
+const JSON_HEADERS = {
   'Content-Type': 'application/json',
   'Accept': 'application/json',
-  'Cache-Control': 'no-cache',
-  'Pragma': 'no-cache',
-};
+}
+const GET_HEADERS = {
+  'Accept': 'application/json',
+}
 
 /**
  * Register a new user
@@ -24,7 +25,7 @@ const DEFAULT_HEADERS = {
 export async function register({ username, email, password }) {
   const response = await fetch(`${API_BASE}/api/auth/register`, {
     method: 'POST',
-    headers: DEFAULT_HEADERS,
+    headers: JSON_HEADERS,
     credentials: 'include', // Important for session cookies
     body: JSON.stringify({ username, email, password }),
   });
@@ -48,7 +49,7 @@ export async function register({ username, email, password }) {
 export async function login({ username, password }) {
   const response = await fetch(`${API_BASE}/api/auth/login`, {
     method: 'POST',
-    headers: DEFAULT_HEADERS,
+    headers: JSON_HEADERS,
     credentials: 'include',
     body: JSON.stringify({ username, password }),
   });
@@ -69,7 +70,7 @@ export async function login({ username, password }) {
 export async function logout() {
   const response = await fetch(`${API_BASE}/api/auth/logout`, {
     method: 'POST',
-    headers: DEFAULT_HEADERS,
+    headers: JSON_HEADERS,
     credentials: 'include',
   });
 
@@ -89,7 +90,7 @@ export async function logout() {
 export async function getCurrentUser() {
   const response = await fetch(`${API_BASE}/api/auth/me`, {
     method: 'GET',
-    headers: DEFAULT_HEADERS,
+    headers: GET_HEADERS,
     credentials: 'include',
   });
 
@@ -109,7 +110,7 @@ export async function getCurrentUser() {
 export async function getAuthStatus() {
   const response = await fetch(`${API_BASE}/api/auth/status`, {
     method: 'GET',
-    headers: DEFAULT_HEADERS,
+    headers: GET_HEADERS,
     credentials: 'include',
   });
 

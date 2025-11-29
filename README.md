@@ -39,6 +39,29 @@ A web application for friendly screen time competition - track daily usage, set 
    ```
    API available at: `http://127.0.0.1:5000`
 
+## Frontend (React + Vite)
+
+The frontend lives in the `offy-front` directory. To run the development server:
+
+1. Change into the frontend folder and install dependencies:
+```bash
+cd offy-front
+npm install
+```
+
+2. Start the dev server:
+```bash
+npm run dev
+```
+
+The Vite dev server typically runs at `http://localhost:5173` (or `5174` if the port is occupied).
+
+Environment note: the frontend reads `VITE_API_BASE` to point at the backend API (default `http://localhost:5001`). If your backend runs on a different host/port, set it in `offy-front/.env`:
+
+```
+VITE_API_BASE=http://localhost:5001
+```
+
 ## 🔧 Backend API
 
 ### Features

@@ -43,8 +43,20 @@ def create_app(config_name: str | None = None) -> Flask:
     # Initialize extensions with app
     db.init_app(app)
 
-    # Setup CORS for React frontend
-    CORS(app, origins=app.config["CORS_ORIGINS"])
+    # Setup CORS for React frontend with credentials (cookies)
+    CORS(
+        app,
+        origins=app.config["CORS_ORIGINS"],
+        supports_credentials=True,
+        allow_headers=[
+            "Content-Type",
+            "Authorization",
+            "Accept",
+            "Cache-Control",
+            "Pragma",
+        ],
+        methods=["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
+    )
 
     # Setup Flask-Login
     login_manager.init_app(app)
