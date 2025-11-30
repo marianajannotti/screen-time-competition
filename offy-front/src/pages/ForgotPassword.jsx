@@ -37,13 +37,15 @@ export default function ForgotPassword() {
             <p className="muted" style={{ marginTop: 12 }}>
               Check your inbox and spam folder. The link expires in 30 minutes.
             </p>
-            <Link to="/signin" className="btn-primary" style={{ display: 'inline-block', marginTop: 16, textDecoration: 'none' }}>
+            <Link to="/signin" style={{ marginTop: 16 }}>
               Back to Sign In
             </Link>
           </div>
         ) : (
           <form onSubmit={onSubmit} style={{ display: 'grid', gap: 12, marginTop: 16 }}>
+            <label htmlFor="email" className="visually-hidden">Email address</label>
             <input
+              id="email"
               type="email"
               placeholder="Email address"
               value={email}

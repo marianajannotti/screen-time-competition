@@ -94,7 +94,9 @@ export default function ResetPassword() {
             <p className="muted">Enter your new password below.</p>
 
             <form onSubmit={onSubmit} style={{ display: 'grid', gap: 12, marginTop: 16 }}>
+              <label htmlFor="new-password" className="visually-hidden">New password</label>
               <input
+                id="new-password"
                 type="password"
                 placeholder="New password"
                 value={newPassword}
@@ -104,7 +106,9 @@ export default function ResetPassword() {
                 minLength={6}
               />
 
+              <label htmlFor="confirm-password" className="visually-hidden">Confirm new password</label>
               <input
+                id="confirm-password"
                 type="password"
                 placeholder="Confirm new password"
                 value={confirmPassword}
