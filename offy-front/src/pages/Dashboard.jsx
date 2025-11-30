@@ -50,6 +50,9 @@ export default function Dashboard() {
 
         </section>
       </div>
+      <div className="corner-action">
+        <button className="btn-primary" onClick={() => (window.location.href = '/add')}>+ Log Hours</button>
+      </div>
     </main>
   )
 }
