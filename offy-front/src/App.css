@@ -106,4 +106,58 @@ input:focus, textarea:focus, select:focus{outline:none;border-color:var(--accent
   .modal{width:92%;}
 }
 
+/* Password Reset Styles */
+.forgot-password-link {
+  color: var(--purple);
+  text-decoration: none;
+  font-size: 14px;
+  transition: color 0.15s ease;
+}
+.forgot-password-link:hover {
+  color: var(--accent-2);
+  text-decoration: underline;
+}
+
+.success-box {
+  background: linear-gradient(135deg, #f0fdf4, #dcfce7);
+  border: 1px solid #86efac;
+  border-radius: 12px;
+  padding: 24px;
+  text-align: center;
+}
+.success-box p {
+  margin: 0;
+  color: #166534;
+}
+.success-icon {
+  width: 48px;
+  height: 48px;
+  background: #22c55e;
+  color: white;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  font-weight: bold;
+  margin-bottom: 12px;
+}
+
+.error-box {
+  background: linear-gradient(135deg, #fef2f2, #fee2e2);
+  border: 1px solid #fca5a5;
+  border-radius: 12px;
+  padding: 24px;
+  text-align: center;
+}
+.error-box p {
+  margin: 0;
+  color: #991b1b;
+}
+
+/* Disabled button state */
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
 
