@@ -1,53 +1,77 @@
 import React from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 
 export default function Header() {
   const { user, signOut } = useAuth()
   const nav = useNavigate()
+  const location = useLocation()
+
+  const initials = (user?.username || user?.name || 'U').trim().charAt(0).toUpperCase()
+  const isDashboard = location.pathname.startsWith('/dashboard')
 
   function onSignOut() {
     signOut()
     nav('/signin')
   }
 
+  // Hide full header on auth pages, show centered brand dot above the auth card
+  if (location.pathname === '/signin' || location.pathname === '/signup') {
+    return (
+      <div className="auth-top-brand center" onClick={() => nav('/')}> 
+        <span className="dot">O</span>
+      </div>
+    )
+  }
+
+  const Brand = (
+    <div className="brand" onClick={() => nav('/dashboard')} style={{ cursor: 'pointer' }}>
+      <div className="dot">O</div>
+      <div>Offy</div>
+    </div>
+  )
+
+  // Nav links vary by page
+  const NavLinks = (
+    <nav className="nav-links">
+      <NavLink to="/dashboard" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>🏠 Home</NavLink>
+      <NavLink to="/leaderboard" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>🏆 Leaderboard</NavLink>
+      <button aria-label="Open profile" onClick={() => nav('/profile')} className={`header-avatar ${location.pathname.startsWith('/profile') ? 'active' : ''}`}>
+        {initials}
+      </button>
+    </nav>
+  )
+
+  const Actions = (
+    <div className="header-actions">
+      {NavLinks}
+      {user && (
+        <>
+          <button onClick={onSignOut} className="btn-ghost">Sign out</button>
+        </>
+      )}
+      {!user && (
+        <>
+          <NavLink to="/signin" className="btn-ghost">Sign in</NavLink>
+          <NavLink to="/signup" className="btn-primary">Create Account</NavLink>
+        </>
+      )}
+    </div>
+  )
+
+  // Welcome only on Home, slightly more to the left: we’ll keep it centered but allow brand to be wider and reduce spacing
+  const homeInlineWelcome = isDashboard ? (
+    <span className="home-inline-welcome">{`Welcome, ${user ? user.username : 'Guest'}`}</span>
+  ) : null
+
   return (
     <header>
       <div className="inner">
-        <div style={{display:'flex',alignItems:'center',gap:12}}>
-          <div className="brand">
-            <div className="dot">O</div>
-            <div>Offy</div>
-          </div>
-          <div className="top-title">Welcome, {user ? user.username : 'Guest'}</div>
+        <div className="left-brand-welcome">
+          {Brand}
+          {homeInlineWelcome}
         </div>
-
-        <div className="header-actions">
-          <Link to="/leaderboard">Leaderboard</Link>
-          <Link to="/dashboard" className="btn-ghost">Dashboard</Link>
-          {user && <button className="btn-primary" onClick={() => nav('/add')}>+ Log Hours</button>}
-          {user ? (
-            <>
-              <div style={{display:'flex',alignItems:'center',gap:8}}>
-                {/* Make avatar clickable to go to profile */}
-                <button
-                  type="button"
-                  aria-label="Open profile"
-                  onClick={() => nav('/profile')}
-                  className="header-avatar"
-                >
-                  {user.username?.[0]?.toUpperCase()}
-                </button>
-                <button onClick={onSignOut} className="btn-ghost">Sign out</button>
-              </div>
-            </>
-          ) : (
-            <>
-              <Link to="/signin" className="btn-ghost">Sign in</Link>
-              <Link to="/signup" className="btn-ghost">Sign up</Link>
-            </>
-          )}
-        </div>
+        {Actions}
       </div>
     </header>
   )

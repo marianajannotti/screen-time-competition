@@ -41,6 +41,13 @@ main { flex: 1 1 auto; }
 .top-title{flex:1;min-width:0;text-align:center;font-weight:600;color:#222;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .brand{display:flex;align-items:center;gap:10px;font-weight:700}
 .brand .dot{width:36px;height:36px;border-radius:50%;background:linear-gradient(90deg,var(--purple),var(--accent-2));display:inline-flex;align-items:center;justify-content:center;color:#fff}
+.left-brand-welcome{display:flex;align-items:center;gap:16px}
+.home-inline-welcome{font-weight:500;color:#222}
+.auth-top-brand{display:flex;align-items:center;gap:8px;padding:12px 16px}
+.auth-top-brand .dot{width:36px;height:36px;border-radius:50%;background:linear-gradient(90deg,var(--purple),var(--accent-2));display:inline-flex;align-items:center;justify-content:center;color:#fff}
+.nav-links{display:flex;align-items:center;gap:16px}
+.nav-link{padding:6px 10px;border-radius:8px;color:#213547;text-decoration:none}
+.nav-link.active{background:#f3f4f8;color:#111;border:1px solid rgba(15,23,42,0.06)}
 
 .header-actions{display:flex;align-items:center;gap:10px;flex-shrink:1;flex-wrap:wrap;min-width:0}
 .header-avatar{width:36px;height:36px;border-radius:18px;background:#ff8a00;display:flex;align-items:center;justify-content:center;color:#fff;border:none;cursor:pointer}
@@ -118,6 +125,10 @@ pre{max-width:100%;overflow:auto;white-space:pre-wrap;word-wrap:break-word}
   .modal{width:92%;}
 }
 
+/* Header auth variant tweaks */
+.auth-top-brand.center{justify-content:center}
+.home-title{margin-left:-80px;text-align:left;font-weight:500}
+
 /* Profile page styles */
 .profile-hero{display:flex;align-items:center;justify-content:space-between;gap:24px;padding:24px;background:linear-gradient(90deg,#6b21a8,#8061da,#9a8bf0);color:#fff;border-radius:18px;position:relative;overflow:hidden}
 .profile-left{display:flex;align-items:center;gap:18px}
@@ -165,18 +176,13 @@ pre{max-width:100%;overflow:auto;white-space:pre-wrap;word-wrap:break-word}
 .btn-link{background:transparent;border:none;color:var(--accent-2);cursor:pointer;padding:6px 8px;border-radius:6px}
 .btn-link:hover{background:#f4f5fa}
 
-/* Badges header */
-.badges-header{display:flex;align-items:center;justify-content:space-between;margin:6px 6px 10px}
-.badges-header-locked{margin-top:14px}
+/* Corner action on home */
+.corner-action{position:fixed;right:18px;bottom:18px;z-index:40}
+.corner-action .btn-primary{padding:16px 22px;border-radius:14px;font-size:18px;box-shadow:0 12px 28px rgba(91,35,173,0.25)}
 
-/* Modal styles for badge details */
-.modal-title{margin-top:0}
-.modal-desc{margin-top:8px}
-.modal-actions{display:flex;justify-content:flex-end;margin-top:16px}
-
-/* Locked badge icon styling */
-.locked-icon{background:linear-gradient(180deg,#9ca3af,#6b7280)}
-
+@media (max-width:1100px){
+  .badges-grid{grid-template-columns:repeat(3,1fr)}
+}
 @media (max-width:720px){
   .profile-hero{flex-direction:column;align-items:flex-start}
   .profile-right{width:100%;justify-content:flex-start;flex-wrap:wrap}
