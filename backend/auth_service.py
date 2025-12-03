@@ -31,6 +31,8 @@ class AuthService:
         """
         if not username or not username.strip():
             return False, "Username is required"
+
+        username_clean = username.strip()
         
         if not email or not email.strip():
             return False, "Email is required"
@@ -39,8 +41,11 @@ class AuthService:
             return False, "Password is required"
         
         # Additional validation
-        if len(username.strip()) < 3:
+        if len(username_clean) < 3:
             return False, "Username must be at least 3 characters"
+
+        if "@" in username_clean:
+            return False, "Username cannot contain the '@' character"
         
         if len(password) < 6:
             return False, "Password must be at least 6 characters"
