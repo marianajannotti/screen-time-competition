@@ -77,6 +77,48 @@ button{padding:8px 12px;border-radius:6px}
 .left-rail{display:flex;flex-direction:column;gap:16px}
 .small-card{padding:14px;border-radius:10px;background:linear-gradient(180deg,#fff,#fbfbff);box-shadow:0 6px 18px rgba(15,23,42,0.03)}
 
+/* Redesigned metric cards */
+.metric-card{background:var(--card);border:1px solid rgba(15,23,42,0.06);border-radius:14px;padding:16px 18px;display:flex;flex-direction:column;gap:10px;box-shadow:0 6px 18px rgba(2,6,23,0.05)}
+.metric-card .card-head{display:flex;align-items:center;gap:10px;font-weight:600;font-size:0.95rem}
+.metric-card .card-head .title{flex:1;color:#222}
+.metric-card .add-btn{background:transparent;border:none;border-radius:0;width:28px;height:28px;cursor:pointer;font-size:20px;line-height:1;display:flex;align-items:center;justify-content:center;color:#555;position:relative;top:-6px;padding:0}
+.metric-card .add-btn:hover{color:#222}
+.metric-card .add-btn:hover{background:#f6f7fb}
+.metric-card .sub-row{display:flex;align-items:center;justify-content:space-between;font-size:0.8rem;color:#555}
+.metric-card .small{margin:0;font-size:0.75rem}
+
+/* Progress bar */
+.progress-bar{position:relative;height:10px;background:transparent;border-radius:6px}
+.progress-bar .track{position:absolute;inset:0;background:#edeef3;border-radius:6px}
+.progress-bar .fill{position:absolute;left:0;top:0;bottom:0;border-radius:6px;transition:width .4s cubic-bezier(.4,.0,.2,1)}
+.progress-bar .pct-label{position:absolute;right:4px;top:-18px;font-size:11px;color:#555;font-weight:600}
+
+/* Top apps */
+.top-apps-row{display:flex;gap:18px;margin-bottom:20px}
+.top-app-card{flex:1;border:1px solid rgba(15,23,42,0.06);border-radius:16px;padding:18px 16px;box-shadow:0 8px 26px rgba(2,6,23,0.06);position:relative;background:linear-gradient(180deg,#fff,#fafcff)}
+.top-app-card .app-inner{display:flex;flex-direction:column;gap:4px}
+.top-app-card .app-icon{width:48px;height:48px;border-radius:14px;box-shadow:0 4px 14px rgba(0,0,0,0.08);background:#eee}
+.top-app-card .delta{position:absolute;top:12px;right:14px;font-size:0.75rem;color:#555;font-weight:600}
+.top-app-card .usage-main{font-size:1.3rem;font-weight:600;color:#222}
+.top-app-card .usage-sub{font-size:0.9rem;color:#555}
+
+/* Tints */
+:root{--tint-red:#fef2f2;--tint-pink:#fdf2f8;--tint-cyan:#ecfeff}
+
+/* Chart card */
+.chart-card{background:var(--card);border:1px solid rgba(15,23,42,0.06);border-radius:16px;padding:20px 26px;box-shadow:0 8px 26px rgba(2,6,23,0.06)}
+.chart-card h3{margin:0 0 12px 0}
+.weekly-chart{display:block;width:100%}
+.weekly-chart text{font-family:inherit}
+.chart-wrapper{position:relative}
+.chart-tooltip{position:absolute;pointer-events:none;background:#111;color:#fff;padding:8px 10px;border-radius:8px;font-size:12px;line-height:1.4;box-shadow:0 4px 16px rgba(0,0,0,0.25);z-index:10;max-width:180px}
+.chart-tooltip strong{display:block;margin-bottom:4px;font-size:12px}
+
+/* Challenges */
+.challenge-list{list-style:none;margin:8px 0 0;padding:0;display:flex;flex-direction:column;gap:6px}
+.challenge-list li label{display:flex;align-items:center;gap:6px;font-size:0.8rem;color:#444}
+.challenge-list input[type=checkbox]{width:16px;height:16px}
+
 /* Modal-like page for add screen time */
 .modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,0.45);display:flex;align-items:center;justify-content:center;z-index:40}
 .modal{background:var(--card);width:760px;border-radius:10px;padding:22px;box-shadow:0 20px 60px rgba(2,6,23,0.2)}
@@ -123,6 +165,10 @@ pre{max-width:100%;overflow:auto;white-space:pre-wrap;word-wrap:break-word}
   header .inner{padding:12px}
   .card{padding:12px}
   .modal{width:92%;}
+  .top-apps-row{flex-wrap:wrap}
+  .top-app-card{flex:1 1 calc(50% - 18px)}
+  .metric-card{padding:14px}
+  .chart-card{padding:16px}
 }
 
 /* New Leaderboard page styles */
