@@ -342,6 +342,9 @@ export default function Dashboard() {
           onSave={(mins)=>{ setWeeklyGoal(mins); localStorage.setItem(storageKey('weekly_goal'), String(mins)); setShowWeeklyModal(false) }}
         />
       )}
+      <div className="corner-action">
+        <button className="btn-primary" onClick={() => (window.location.href = '/add')}>+ Log Hours</button>
+      </div>
     </main>
   )
 }
