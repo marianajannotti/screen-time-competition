@@ -12,7 +12,9 @@ def send_password_reset_email(email: str, reset_token: str) -> None:
         reset_token: Secure reset token.
     """
     # Construct reset URL (frontend will handle this route)
-    reset_url = f"http://localhost:3000/reset-password?token={reset_token}"
+    # Uses FRONTEND_URL from config, defaults to Vite dev server
+    frontend_url = current_app.config.get("FRONTEND_URL", "http://localhost:5173")
+    reset_url = f"{frontend_url}/reset-password?token={reset_token}"
     
     # Create email message
     msg = Message(
