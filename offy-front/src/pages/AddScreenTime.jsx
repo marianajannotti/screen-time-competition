@@ -1,6 +1,11 @@
 import React, { useEffect, useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
-import { addScreenTime as apiAddScreenTime, getMonthlyLogs, saveMonthlyLogs } from '../api/mockApi'
+import { addScreenTime as apiAddScreenTime, getMonthlyLogs, saveMonthlyLogs, getChallenges } from '../api/mockApi'
+
+// normalize user id shape
+function getUserId(u) {
+  return u?.user_id ?? u?.id ?? u?.userId ?? u?.uid ?? null
+}
 import { useNavigate } from 'react-router-dom'
 
 export default function AddScreenTime() {
@@ -13,11 +18,30 @@ export default function AddScreenTime() {
   const [message, setMessage] = useState(null)
   const [pendingMinutes, setPendingMinutes] = useState(null)
   const [dupTarget, setDupTarget] = useState(null) // { app, date }
+  const [challenges, setChallenges] = useState([])
+  const [challengeId, setChallengeId] = useState('')
   const nav = useNavigate()
 
   useEffect(() => {
-    if (!user) nav('/signin')
+    if (!user || !getUserId(user)) nav('/signin')
   }, [user, nav])
+
+  // fetch user's challenges so they can optionally tag an entry
+  useEffect(() => {
+    let mounted = true
+    if (!user || !getUserId(user)) { setChallenges([]); return }
+    ;(async () => {
+      try {
+        const res = await getChallenges(getUserId(user))
+        if (!mounted) return
+        setChallenges(Array.isArray(res.challenges) ? res.challenges : [])
+      } catch (err) {
+        if (!mounted) return
+        setChallenges([])
+      }
+    })()
+    return () => { mounted = false }
+  }, [user])
 
   function close() {
     setShow(false)
@@ -26,7 +50,8 @@ export default function AddScreenTime() {
 
   async function onSubmit(e) {
     e.preventDefault()
-    if (!user) return
+    const uid = getUserId(user)
+    if (!uid) return
     // Guard against future dates (should be impossible with max constraint but double-check)
     const todayStr = new Date().toISOString().slice(0,10)
     if (date > todayStr) {
@@ -35,7 +60,7 @@ export default function AddScreenTime() {
     }
     const totalMinutes = (Number(hours) || 0) * 60 + (Number(minutes) || 0)
     // Use mock API helpers for monthly logs (keeps leaderboard utilities consistent)
-    const { logs: existing } = await getMonthlyLogs(user.user_id)
+    const { logs: existing } = await getMonthlyLogs(uid)
     const targetApp = appName || '__TOTAL__'
     const dupIndex = existing.findIndex((l) => l.date === date && l.app === targetApp)
     if (dupIndex !== -1) {
@@ -45,9 +70,12 @@ export default function AddScreenTime() {
     }
     // Save new entry to monthly logs and also add a screenTime log entry
     existing.push({ app: targetApp, date, minutes: totalMinutes })
-    await saveMonthlyLogs(user.user_id, existing)
+    await saveMonthlyLogs(uid, existing)
     try {
-      await apiAddScreenTime({ user_id: user.user_id, date, minutes: totalMinutes })
+      // include challenge_id if selected so entries can be traced to challenges
+      const payload = { user_id: uid, date, minutes: totalMinutes }
+      if (challengeId) payload.challenge_id = challengeId
+      await apiAddScreenTime(payload)
     } catch (err) {
       // non-fatal for monthly logging; ignore
     }
@@ -56,15 +84,18 @@ export default function AddScreenTime() {
   }
 
   async function resolveDuplicate(replace) {
-    if (!dupTarget) return
+    const uid = getUserId(user)
+    if (!dupTarget || !uid) return
     if (replace) {
-      const { logs: arr } = await getMonthlyLogs(user.user_id)
+      const { logs: arr } = await getMonthlyLogs(uid)
       const idx = arr.findIndex((l) => l.date === dupTarget.date && l.app === dupTarget.app)
       if (idx !== -1) {
         arr[idx].minutes = pendingMinutes
-        await saveMonthlyLogs(user.user_id, arr)
+        await saveMonthlyLogs(uid, arr)
         try {
-          await apiAddScreenTime({ user_id: user.user_id, date: dupTarget.date, minutes: pendingMinutes })
+          const payload = { user_id: uid, date: dupTarget.date, minutes: pendingMinutes }
+          if (challengeId) payload.challenge_id = challengeId
+          await apiAddScreenTime(payload)
         } catch (err) {
           // ignore
         }
@@ -111,6 +142,19 @@ export default function AddScreenTime() {
             </select>
             <small className="muted" style={{marginTop:2}}>If you want to log your total screen time, choose that option</small>
           </label>
+
+          {challenges.length > 0 && (
+            <label style={{display:'flex',flexDirection:'column',gap:4}}>
+              <span>Apply to Challenge (optional)</span>
+              <select value={challengeId} onChange={e=>setChallengeId(e.target.value)} style={{paddingLeft:18}}>
+                <option value="">(None)</option>
+                {challenges.map(c=> (
+                  <option key={c.challenge_id} value={c.challenge_id}>{c.name}</option>
+                ))}
+              </select>
+              <small className="muted" style={{marginTop:2}}>Optionally tag this entry as part of one of your challenges</small>
+            </label>
+          )}
 
           <div style={{display:'flex',gap:12}}>
             <label style={{flex:1,display:'flex',flexDirection:'column',gap:4}}>
