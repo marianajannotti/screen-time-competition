@@ -219,3 +219,65 @@ pre{max-width:100%;overflow:auto;white-space:pre-wrap;word-wrap:break-word}
 .lb-table th.rank{width:50px}
 
 
+/* Header auth variant tweaks */
+.auth-top-brand.center{justify-content:center}
+.home-title{margin-left:-80px;text-align:left;font-weight:500}
+
+/* Profile page styles */
+.profile-hero{display:flex;align-items:center;justify-content:space-between;gap:24px;padding:24px;background:linear-gradient(90deg,#6b21a8,#8061da,#9a8bf0);color:#fff;border-radius:18px;position:relative;overflow:hidden}
+.profile-left{display:flex;align-items:center;gap:18px}
+.profile-avatar-ring{width:112px;height:112px;border-radius:50%;background:linear-gradient(180deg,#10b981,#60a5fa);padding:4px;display:flex;align-items:center;justify-content:center;box-shadow:0 10px 24px rgba(79,70,229,0.22)}
+.profile-avatar{width:100px;height:100px;border-radius:50%;background:#fff;color:#6b21a8;display:flex;align-items:center;justify-content:center;font-size:44px;font-weight:800}
+.profile-name{display:flex;flex-direction:column;color:#fff}
+.profile-first{font-size:34px;line-height:1.1;font-weight:800;letter-spacing:0.2px}
+.profile-right{display:flex;align-items:center;gap:16px}
+.profile-stat{background:rgba(255,255,255,0.14);backdrop-filter:blur(6px);border:1px solid rgba(255,255,255,0.26);color:#fff;padding:16px 18px;border-radius:14px;min-width:160px;text-align:left;box-shadow:0 10px 24px rgba(79,70,229,0.18)}
+.profile-stat .icon{font-size:22px;margin-bottom:6px}
+.profile-stat .value{font-size:24px;font-weight:800}
+.profile-stat .label{font-size:13px;opacity:0.92}
+
+.badges-section{margin-top:22px}
+.badges-title{color:#6b21a8;margin:0 0 12px 6px}
+.badges-subtitle{margin:0;color:#333}
+.badges-grid{display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:16px}
+.badge-card{display:flex;align-items:center;gap:12px;padding:16px;border-radius:14px;border:1px dashed #e2e8f0;background:linear-gradient(180deg,#fff,#fbfbff);cursor:pointer}
+.badge-card.owned{border:1px solid rgba(15,23,42,0.06);box-shadow:0 12px 26px rgba(56,47,84,0.08);background:linear-gradient(180deg,#fff,#fdf7f3)}
+.badge-card.locked{opacity:0.75}
+
+.badge-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 28px rgba(56,47,84,0.12);
+  transition: all 0.2s ease;
+}
+
+.badge-card:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.badge-icon{width:42px;height:42px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:linear-gradient(180deg,#f97316,#fb923c);color:#fff;font-size:22px;border:none;cursor:pointer}
+.badge-info{display:flex;flex-direction:column}
+.badge-name{font-weight:700}
+.badge-date{font-size:12px}
+
+.profile-footer{margin:18px auto 8px;text-align:center}
+
+/* Global app shell & footer */
+.app-shell{min-height:100vh;display:flex;flex-direction:column}
+.global-footer{margin-top:auto;padding:14px 16px;text-align:center;color:#666}
+
+/* See more row */
+.see-more-row{display:flex;justify-content:center;align-items:center;margin:8px 0 2px}
+.btn-link{background:transparent;border:none;color:var(--accent-2);cursor:pointer;padding:6px 8px;border-radius:6px}
+.btn-link:hover{background:#f4f5fa}
+
+/* Corner action on home */
+.corner-action{position:fixed;right:18px;bottom:18px;z-index:40}
+.corner-action .btn-primary{padding:16px 22px;border-radius:14px;font-size:18px;box-shadow:0 12px 28px rgba(91,35,173,0.25)}
+
+@media (max-width:1100px){
+  .badges-grid{grid-template-columns:repeat(3,1fr)}
+}
+@media (max-width:720px){
+  .profile-hero{flex-direction:column;align-items:flex-start}
+  .profile-right{width:100%;justify-content:flex-start;flex-wrap:wrap}
+}
