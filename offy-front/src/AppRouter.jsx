@@ -6,6 +6,7 @@ import Dashboard from './pages/Dashboard'
 import Profile from './pages/Profile'
 import AddScreenTime from './pages/AddScreenTime'
 import Leaderboard from './pages/Leaderboard'
+import Friends from './pages/Friends'
 import Header from './components/Header'
 import PrivateRoute from './components/PrivateRoute'
 
@@ -23,6 +24,7 @@ export default function AppRouter() {
         <Route path="/profile" element={<PrivateRoute element={<Profile />} />} />
         <Route path="/add" element={<PrivateRoute element={<AddScreenTime />} />} />
         <Route path="/leaderboard" element={<PrivateRoute element={<Leaderboard />} />} />
+        <Route path="/friends" element={<PrivateRoute element={<Friends />} />} />
 
         <Route path="*" element={<div style={{ padding: 20 }}>Not Found</div>} />
         </Routes>
