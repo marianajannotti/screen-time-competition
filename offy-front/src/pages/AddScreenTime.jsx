@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
+import { addScreenTime as apiAddScreenTime, getMonthlyLogs, saveMonthlyLogs } from '../api/mockApi'
 import { useNavigate } from 'react-router-dom'
 
 export default function AddScreenTime() {
@@ -33,34 +34,40 @@ export default function AddScreenTime() {
       return
     }
     const totalMinutes = (Number(hours) || 0) * 60 + (Number(minutes) || 0)
-    // Duplicate detection (localStorage based for FE testing)
-    const storageKey = `offy_logs_${user.user_id}`
-    const existingRaw = localStorage.getItem(storageKey)
-    const existing = existingRaw ? JSON.parse(existingRaw) : []
+    // Use mock API helpers for monthly logs (keeps leaderboard utilities consistent)
+    const { logs: existing } = await getMonthlyLogs(user.user_id)
     const targetApp = appName || '__TOTAL__'
-    const dupIndex = existing.findIndex(l => l.date === date && l.app === targetApp)
+    const dupIndex = existing.findIndex((l) => l.date === date && l.app === targetApp)
     if (dupIndex !== -1) {
       setDupTarget({ app: targetApp, date })
       setPendingMinutes(totalMinutes)
       return
     }
-    // Save new entry
+    // Save new entry to monthly logs and also add a screenTime log entry
     existing.push({ app: targetApp, date, minutes: totalMinutes })
-    localStorage.setItem(storageKey, JSON.stringify(existing))
+    await saveMonthlyLogs(user.user_id, existing)
+    try {
+      await apiAddScreenTime({ user_id: user.user_id, date, minutes: totalMinutes })
+    } catch (err) {
+      // non-fatal for monthly logging; ignore
+    }
     setMessage('Saved')
     setTimeout(close, 700)
   }
 
-  function resolveDuplicate(replace) {
+  async function resolveDuplicate(replace) {
     if (!dupTarget) return
     if (replace) {
-      const storageKey = `offy_logs_${user.user_id}`
-      const existingRaw = localStorage.getItem(storageKey)
-      const arr = existingRaw ? JSON.parse(existingRaw) : []
-      const idx = arr.findIndex(l => l.date === dupTarget.date && l.app === dupTarget.app)
+      const { logs: arr } = await getMonthlyLogs(user.user_id)
+      const idx = arr.findIndex((l) => l.date === dupTarget.date && l.app === dupTarget.app)
       if (idx !== -1) {
         arr[idx].minutes = pendingMinutes
-        localStorage.setItem(storageKey, JSON.stringify(arr))
+        await saveMonthlyLogs(user.user_id, arr)
+        try {
+          await apiAddScreenTime({ user_id: user.user_id, date: dupTarget.date, minutes: pendingMinutes })
+        } catch (err) {
+          // ignore
+        }
       }
     }
     setDupTarget(null)
