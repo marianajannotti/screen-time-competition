@@ -5,6 +5,7 @@ from __future__ import annotations
 from flask import Flask
 from flask_login import LoginManager
 from flask_cors import CORS
+from flask_mail import Mail
 from dotenv import load_dotenv
 import os
 
@@ -17,6 +18,7 @@ load_dotenv()
 
 # Initialize extensions
 login_manager = LoginManager()
+mail = Mail()
 
 
 def create_app(config_name: str | None = None) -> Flask:
@@ -42,6 +44,7 @@ def create_app(config_name: str | None = None) -> Flask:
 
     # Initialize extensions with app
     db.init_app(app)
+    mail.init_app(app)
 
     # Setup CORS for React frontend with credentials (cookies)
     CORS(

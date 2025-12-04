@@ -162,3 +162,105 @@ def auth_status():
     else:
         response = make_response(jsonify({"authenticated": False}), 200)
         return add_api_headers(response)
+
+
+@auth_bp.route("/forgot-password", methods=["POST"])
+def forgot_password():
+    """Request a password reset email.
+
+    Expected JSON:
+    {
+        "email": "user@example.com"
+    }
+
+    Returns:
+        Response: JSON response confirming email sent (or generic message)
+    """
+    # Validate Content-Type
+    if request.content_type != "application/json":
+        response = make_response(
+            jsonify({"error": "Content-Type must be application/json"}), 415
+        )
+        return add_api_headers(response)
+
+    try:
+        data = request.get_json()
+        email = data.get("email")
+
+        if not email:
+            response = make_response(jsonify({"error": "Email is required"}), 400)
+            return add_api_headers(response)
+
+        # Generate reset token
+        reset_token, error = AuthService.generate_reset_token(email)
+
+        # Send email if user exists (token will be None if user doesn't exist)
+        if reset_token:
+            from .email_service import send_password_reset_email
+            send_password_reset_email(email, reset_token)
+
+        # Always return same message (don't reveal if email exists)
+        response = make_response(
+            jsonify({
+                "message": "If an account with that email exists, a password reset link has been sent."
+            }),
+            200
+        )
+        return add_api_headers(response)
+
+    except Exception as e:
+        response = make_response(
+            jsonify({"error": f"Failed to process request: {str(e)}"}), 500
+        )
+        return add_api_headers(response)
+
+
+@auth_bp.route("/reset-password", methods=["POST"])
+def reset_password():
+    """Reset password using a valid token.
+
+    Expected JSON:
+    {
+        "token": "reset_token_here",
+        "new_password": "newpassword123"
+    }
+
+    Returns:
+        Response: JSON response confirming password reset
+    """
+    # Validate Content-Type
+    if request.content_type != "application/json":
+        response = make_response(
+            jsonify({"error": "Content-Type must be application/json"}), 415
+        )
+        return add_api_headers(response)
+
+    try:
+        data = request.get_json()
+        token = data.get("token")
+        new_password = data.get("new_password")
+
+        if not token or not new_password:
+            response = make_response(
+                jsonify({"error": "Token and new password are required"}), 400
+            )
+            return add_api_headers(response)
+
+        # Reset password
+        success, error = AuthService.reset_password(token, new_password)
+
+        if not success:
+            response = make_response(jsonify({"error": error}), 400)
+            return add_api_headers(response)
+
+        response = make_response(
+            jsonify({"message": "Password has been reset successfully"}), 200
+        )
+        return add_api_headers(response)
+
+    except Exception as e:
+        db.session.rollback()
+        response = make_response(
+            jsonify({"error": f"Failed to reset password: {str(e)}"}), 500
+        )
+        return add_api_headers(response)
