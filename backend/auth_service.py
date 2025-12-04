@@ -33,6 +33,8 @@ class AuthService:
         """
         if not username or not username.strip():
             return False, "Username is required"
+
+        username_clean = username.strip()
         
         if not email or not email.strip():
             return False, "Email is required"
@@ -41,8 +43,11 @@ class AuthService:
             return False, "Password is required"
         
         # Additional validation
-        if len(username.strip()) < 3:
+        if len(username_clean) < 3:
             return False, "Username must be at least 3 characters"
+
+        if "@" in username_clean:
+            return False, "Username cannot contain the '@' character"
         
         if len(password) < 6:
             return False, "Password must be at least 6 characters"
@@ -112,31 +117,31 @@ class AuthService:
         return new_user
 
     @staticmethod
-    def authenticate_user(username, password):
-        """Authenticate a user with username and password.
-        
+    def authenticate_user(identifier, password):
+        """Authenticate a user with username or email plus password.
+
         Args:
-            username (str): Username to authenticate
-            password (str): Plain text password to verify
-            
+            identifier (str): Username or email provided by the client.
+            password (str): Plain text password to verify.
+
         Returns:
             tuple: (User or None, str or None)
-                   Returns (User, None) if authentication successful
-                   Returns (None, error_message) if authentication failed
+                Returns (User, None) if authentication succeeds.
+                Returns (None, error_message) if authentication fails.
         """
-        if not username or not password:
-            return None, "Username and password are required"
-        
-        # Find user
-        user = User.query.filter_by(username=username.strip()).first()
-        
-        if not user:
-            return None, "Invalid username or password"
-        
-        # Verify password
-        if not check_password_hash(user.password_hash, password):
-            return None, "Invalid username or password"
-        
+
+        if not identifier or not password:
+            return None, "Username/email and password are required"
+
+        identifier = identifier.strip()
+        if "@" in identifier:
+            user = User.query.filter_by(email=identifier.lower()).first()
+        else:
+            user = User.query.filter_by(username=identifier).first()
+
+        if not user or not check_password_hash(user.password_hash, password):
+            return None, "Invalid username/email or password"
+
         return user, None
 
     @staticmethod
