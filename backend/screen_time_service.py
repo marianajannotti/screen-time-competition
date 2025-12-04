@@ -120,6 +120,16 @@ class ScreenTimeService:
         db.session.add(new_log)
         db.session.commit()
 
+        # Check and award badges after creating a screen time entry
+        try:
+            from .badge_logic import BadgeLogic
+            awarded_badges = BadgeLogic.check_and_award_badges(user_id)
+            if awarded_badges:
+                print(f"Awarded badges to user {user_id}: {awarded_badges}")
+        except Exception as e:
+            # Don't fail the screen time entry if badge logic fails
+            print(f"Badge logic error for user {user_id}: {e}")
+
         return new_log
 
     @staticmethod
