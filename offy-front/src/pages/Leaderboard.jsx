@@ -6,10 +6,16 @@ import {
   computeMonthlyStatsForUser,
   seedMonthlyMockData,
   resetAllMockData,
+  getFriendIds,
+  addFriendship,
 } from '../api/mockApi'
 
 export default function Leaderboard(){
   const { user } = useAuth()
+  // Normalize user id from different possible shapes
+  function getUserId(u) {
+    return u?.user_id ?? u?.id ?? u?.userId ?? u?.uid ?? null
+  }
   const [tab, setTab] = useState('friends') // 'friends' | 'global'
   const [globalUsers, setGlobalUsers] = useState([])
   const [loading, setLoading] = useState(true)
@@ -17,14 +23,32 @@ export default function Leaderboard(){
   const [search, setSearch] = useState('')
   // Auto-seed on first load if needed
   useEffect(()=>{ seedMonthlyMockData() },[])
-  const friendsKey = user ? `offy_friends_${user.user_id}` : 'offy_friends_anon'
-  const [friends, setFriends] = useState(()=>{
-    try { return JSON.parse(localStorage.getItem(friendsKey)||'[]') } catch { return [] }
-  })
+  const [friends, setFriends] = useState([])
 
-  useEffect(()=>{ // reload friends when user changes
-    setFriends(()=>{ try { return JSON.parse(localStorage.getItem(friendsKey)||'[]') } catch { return [] } })
-  }, [friendsKey])
+  useEffect(()=>{
+    let cancelled = false
+    async function loadFriends(){
+      if (!user) { setFriends([]); return }
+        try{
+          const uid = getUserId(user)
+          if (!uid) { if(!cancelled) setFriends([]); return }
+          const res = await getFriendIds(uid)
+        if (!cancelled) setFriends(res.friendIds || [])
+      }catch(e){ console.error(e) }
+    }
+    loadFriends()
+    return ()=>{ cancelled = true }
+  }, [user])
+
+  // Close modal on Escape key when open
+  useEffect(()=>{
+    if (!showModal) return
+    const onKey = (e) => {
+      if (e.key === 'Escape') setShowModal(false)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [showModal])
 
   useEffect(()=>{
     let cancelled=false
@@ -63,10 +87,14 @@ export default function Leaderboard(){
   const rankedFriends = useMemo(()=> rankedGlobal.filter(u=>friendUserSet.has(u.user_id)), [rankedGlobal, friendUserSet])
 
   function addFriend(id){
-    if(friendUserSet.has(id)) return
-    const next = [...friends, id]
-    setFriends(next)
-    localStorage.setItem(friendsKey, JSON.stringify(next))
+    const uid = getUserId(user)
+    if(friendUserSet.has(id) || !uid) return
+    addFriendship(uid, id).then(()=>{
+      const next = [...friends, id]
+      setFriends(next)
+    }).catch((e)=>{
+      console.error('Failed to add friend', e)
+    })
   }
 
   const list = tab==='friends' ? rankedFriends : rankedGlobal
@@ -74,7 +102,8 @@ export default function Leaderboard(){
   const remainder = list.slice(3)
   const filteredAddable = useMemo(()=>{
     const q = search.trim().toLowerCase()
-    return rankedGlobal.filter(u=>u.user_id!==user?.user_id && !friendUserSet.has(u.user_id) && (!q || u.username.toLowerCase().includes(q)))
+    const uid = getUserId(user)
+    return rankedGlobal.filter(u=>u.user_id!==uid && !friendUserSet.has(u.user_id) && (!q || u.username.toLowerCase().includes(q)))
   }, [search, rankedGlobal, friendUserSet, user])
 
   return (
@@ -143,7 +172,7 @@ export default function Leaderboard(){
         </div>
       </div>
       {showModal && (
-        <div className="modal-backdrop" style={{zIndex:70}}>
+        <div className="modal-backdrop" style={{zIndex:70}} onClick={(e)=>{ if (e.target === e.currentTarget) setShowModal(false) }}>
           <div
             className="modal"
             style={{maxWidth:520}}
