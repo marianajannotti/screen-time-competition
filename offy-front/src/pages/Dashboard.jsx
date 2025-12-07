@@ -27,6 +27,7 @@ function WeeklyChart({ days, chartData, appColorMap }) {
   const height = 180
   const barW = 54
   const gap = 64
+  const BAR_X_OFFSET = 14
   const totals = days.map(d => chartData[d]?.total || 0)
   const max = Math.max(...totals, 1)
   const maxHours = Math.ceil(max / 60)
@@ -53,7 +54,7 @@ function WeeklyChart({ days, chartData, appColorMap }) {
             // No logs: just show day label without a bar.
             return (
               <g key={day}>
-                <text x={x + barW/2 + 14} y={height + 14} textAnchor="middle" fontSize="12" fill="#999">{day}</text>
+                <text x={x + barW/2 + BAR_X_OFFSET} y={height + 14} textAnchor="middle" fontSize="12" fill="#999">{day}</text>
               </g>
             )
           }
@@ -71,7 +72,7 @@ function WeeklyChart({ days, chartData, appColorMap }) {
                 return (
                   <rect
                     key={app}
-                    x={x + 14}
+                    x={x + BAR_X_OFFSET}
                     y={y}
                     width={barW}
                     height={h}
@@ -107,7 +108,7 @@ function WeeklyChart({ days, chartData, appColorMap }) {
               {remainder > 0 && (()=>{
                 const remH = (remainder / max) * (height - 30)
                 const remY = yBase - yOffset - remH
-                return <rect x={x + 14} y={remY} width={barW} height={remH} fill="#e2e8f0" />
+                return <rect x={x + BAR_X_OFFSET} y={remY} width={barW} height={remH} fill="#e2e8f0" />
               })()}
               {/* Small transparent strip at top for total hover without blocking app segments */}
               {total > 0 && (()=>{
@@ -116,7 +117,7 @@ function WeeklyChart({ days, chartData, appColorMap }) {
                 const stripY = yBase - totalH
                 return (
                   <rect
-                    x={x + 14}
+                    x={x + BAR_X_OFFSET}
                     y={stripY}
                     width={barW}
                     height={stripH}
@@ -142,7 +143,7 @@ function WeeklyChart({ days, chartData, appColorMap }) {
                   />
                 )
               })()}
-      <text x={x + barW/2 + 14} y={height + 14} textAnchor="middle" fontSize="12" fill="#444">{day}</text>
+      <text x={x + barW/2 + BAR_X_OFFSET} y={height + 14} textAnchor="middle" fontSize="12" fill="#444">{day}</text>
             </g>
           )
         })}
@@ -175,9 +176,13 @@ export default function Dashboard() {
     const today = new Date()
     const currentDayOfWeek = today.getDay() // 0 = Sunday
     const weekStart = new Date(today.getFullYear(), today.getMonth(), today.getDate() - currentDayOfWeek)
+    weekStart.setHours(0, 0, 0, 0)
+    const todayMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate())
+    todayMidnight.setHours(23, 59, 59, 999)
     return arr.filter(l => {
       const d = new Date(l.date)
-      return d >= weekStart && d <= today
+      d.setHours(0, 0, 0, 0)
+      return d >= weekStart && d <= todayMidnight
     })
   }, [user])
 
@@ -227,8 +232,7 @@ export default function Dashboard() {
   
   // Generate all days of current week (Sun-Sat)
   const currentWeekDays = Array.from({length:7}, (_,i)=>{
-    const d = new Date(today)
-    d.setDate(today.getDate() - currentDayOfWeek + i) // Start from Sunday
+    const d = new Date(today.getFullYear(), today.getMonth(), today.getDate() - currentDayOfWeek + i)
     return d.toISOString().slice(0,10)
   })
   
@@ -306,7 +310,9 @@ export default function Dashboard() {
             <div className="top-app-card" style={{ background: 'linear-gradient(180deg,#fff,#fafcff)' }}>
               <div className="app-inner">
                 <div className="usage-main">{todayTotal !== undefined ? minutesLabel(todayTotal) : <span style={{fontSize:'12px'}}>Log your Total Screen Time</span>}</div>
-                <div className="usage-sub">Click on the +Log Hours button on the bottom right to log your hours</div>
+                {todayTotal === undefined && (
+                  <div className="usage-sub">Click on the +Log Hours button on the bottom right to log your hours</div>
+                )}
               </div>
             </div>
             {topApps.map(app => (
