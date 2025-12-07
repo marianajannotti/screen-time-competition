@@ -364,7 +364,7 @@ class TestLeaderboardWithGoals(LeaderboardAPITestCase):
         self.assertEqual(lb[0]["username"], "bob")
         self.assertEqual(lb[0]["streak"], 2)
 
-        # Alice's streak should be 1 (only today counts, as day -1 exceeded goal)
+        # Alice's streak should be 1 (only today counts, as yesterday's 150 minutes exceeded the 120 goal)
         self.assertEqual(lb[1]["username"], "alice")
         self.assertEqual(lb[1]["streak"], 1)  # Only today counts
         self.assertEqual(lb[1]["days_logged"], 3)  # Verify all days were logged

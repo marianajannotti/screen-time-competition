@@ -155,7 +155,8 @@ class LeaderboardService:
             if avg is None:
                 # No data at all: sort to bottom, then by username
                 return (1, 0, 0, u["username"])
-            # The case where streak > 0 and avg is None cannot occur due to logic in compute_user_monthly_stats.
+            # The case where streak > 0 and avg is None cannot occur because
+            # streak is only > 0 when days_logged > 0, which guarantees avg_per_day is calculated.
 
             # Normal case: sort by streak desc, then avg asc
             return (0, -streak, avg, u["username"])
