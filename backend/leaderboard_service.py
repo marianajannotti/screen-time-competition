@@ -18,7 +18,8 @@ class LeaderboardService:
 
         Args:
             reference_date: Date to use for month calculation.
-                           Defaults to today.
+                           Defaults to today. If in the future, returns
+                           empty days list.
 
         Returns:
             Tuple of (start_date, end_date, list_of_days)
@@ -126,6 +127,8 @@ class LeaderboardService:
             List of user dicts with stats, ordered by rank.
         """
         # Get all users
+        # Note: Computes stats for ALL users before limiting.
+        # Consider pagination/caching for large user bases.
         users = User.query.all()
 
         # Compute stats for each user
@@ -149,13 +152,11 @@ class LeaderboardService:
             streak = u["streak"] or 0
             avg = u["avg_per_day"]
 
-            if streak == 0 and avg is None:
-                # No data at all: sort to bottom, then by username
-                return (2, 0, 0, u["username"])
-
             if avg is None:
-                # Has streak but no avg (edge case)
-                return (1, -streak, 0, u["username"])
+                # No data at all: sort to bottom, then by username
+                return (1, 0, 0, u["username"])
+            # The case where streak > 0 and avg is None cannot occur because
+            # streak is only > 0 when days_logged > 0, which guarantees avg_per_day is calculated.
 
             # Normal case: sort by streak desc, then avg asc
             return (0, -streak, avg, u["username"])
