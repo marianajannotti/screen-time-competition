@@ -1,6 +1,6 @@
 """Leaderboard API blueprint for global rankings."""
 
-from flask import Blueprint, jsonify, request, make_response
+from flask import Blueprint, jsonify, request, make_response, current_app
 
 from .leaderboard_service import LeaderboardService
 from .utils import add_api_headers
@@ -32,9 +32,16 @@ def get_global_leaderboard():
     try:
         limit_param = request.args.get("limit", 50)
         try:
-            limit = max(1, min(int(limit_param), 100))
-        except (TypeError, ValueError):
-            limit = 50
+            limit = int(limit_param)
+            if limit < 1:
+                raise ValueError("Limit must be at least 1")
+            limit = min(limit, 100)
+        except (TypeError, ValueError) as e:
+            response = make_response(
+                jsonify({"error": f"Invalid limit parameter: {e}"}),
+                400,
+            )
+            return add_api_headers(response)
 
         leaderboard = LeaderboardService.get_global_leaderboard(limit=limit)
 
@@ -48,8 +55,10 @@ def get_global_leaderboard():
         return add_api_headers(response)
 
     except Exception as exc:
+        # Log the actual error for debugging
+        current_app.logger.error(f"Leaderboard error: {exc}")
         response = make_response(
-            jsonify({"error": f"Failed to get leaderboard: {exc}"}),
+            jsonify({"error": "Failed to retrieve leaderboard"}),
             500,
         )
         return add_api_headers(response)

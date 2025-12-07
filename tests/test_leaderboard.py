@@ -125,6 +125,10 @@ class TestGlobalLeaderboardEndpoint(LeaderboardAPITestCase):
     def test_users_without_logs_included_with_zero_stats(self):
         """Verify that users without logs are included with zero stats.
 
+        Users with no screen time logs should still appear on the leaderboard
+        but rank lower than users with active streaks. Both users are included;
+        users with streaks (e.g., alice) rank higher than those without logs (e.g., bob).
+
         Returns:
             None
         """
@@ -225,17 +229,28 @@ class TestGlobalLeaderboardEndpoint(LeaderboardAPITestCase):
         Returns:
             None
         """
-        # Create 5 users with logs
+        # Create users with known rankings
         today = date.today()
-        for i in range(5):
-            user = self._create_user(f"user{i}", f"user{i}@test.com")
-            self._add_screen_time(user.id, today, 100 + i * 10)
+        user0 = self._create_user("user0", "user0@test.com")
+        self._add_screen_time(user0.id, today, 100)  # Best (lowest avg)
+        user1 = self._create_user("user1", "user1@test.com")
+        self._add_screen_time(user1.id, today, 110)
+        user2 = self._create_user("user2", "user2@test.com")
+        self._add_screen_time(user2.id, today, 120)
+        user3 = self._create_user("user3", "user3@test.com")
+        self._add_screen_time(user3.id, today, 130)
+        user4 = self._create_user("user4", "user4@test.com")
+        self._add_screen_time(user4.id, today, 140)
 
         response = self.client.get("/api/leaderboard/global?limit=3")
 
         self.assertEqual(response.status_code, 200)
         data = response.get_json()
         self.assertEqual(len(data["leaderboard"]), 3)
+        # Verify top 3 have lowest screen times
+        self.assertEqual(data["leaderboard"][0]["username"], "user0")
+        self.assertEqual(data["leaderboard"][1]["username"], "user1")
+        self.assertEqual(data["leaderboard"][2]["username"], "user2")
 
     def test_limit_max_100(self):
         """Verify that limit is capped at 100.
@@ -243,16 +258,21 @@ class TestGlobalLeaderboardEndpoint(LeaderboardAPITestCase):
         Returns:
             None
         """
-        user = self._create_user("alice", "alice@test.com")
-        self._add_screen_time(user.id, date.today(), 120)
+        # Create 110 users to test the cap
+        today = date.today()
+        for i in range(110):
+            user = self._create_user(f"user{i}", f"user{i}@test.com")
+            self._add_screen_time(user.id, today, 100)
 
         response = self.client.get("/api/leaderboard/global?limit=150")
 
         self.assertEqual(response.status_code, 200)
-        # Should not error, just cap at 100
+        data = response.get_json()
+        # Verify limit is capped at 100, not 110 or 150
+        self.assertEqual(len(data["leaderboard"]), 100)
 
-    def test_invalid_limit_defaults_to_50(self):
-        """Verify that invalid limit parameter defaults to 50.
+    def test_invalid_limit_returns_error(self):
+        """Verify that invalid limit parameter returns 400 error.
 
         Returns:
             None
@@ -262,9 +282,10 @@ class TestGlobalLeaderboardEndpoint(LeaderboardAPITestCase):
 
         response = self.client.get("/api/leaderboard/global?limit=invalid")
 
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, 400)
         data = response.get_json()
-        self.assertIsNotNone(data["leaderboard"])
+        self.assertIn("error", data)
+        self.assertIn("Invalid limit parameter", data["error"])
 
     def test_options_request_for_cors(self):
         """Verify that OPTIONS request returns 200 for CORS preflight.
@@ -343,8 +364,10 @@ class TestLeaderboardWithGoals(LeaderboardAPITestCase):
         self.assertEqual(lb[0]["username"], "bob")
         self.assertEqual(lb[0]["streak"], 2)
 
+        # Alice's streak should be 1 (only today counts, as day -1 exceeded goal)
         self.assertEqual(lb[1]["username"], "alice")
         self.assertEqual(lb[1]["streak"], 1)  # Only today counts
+        self.assertEqual(lb[1]["days_logged"], 3)  # Verify all days were logged
 
 
 class TestLeaderboardEdgeCases(LeaderboardAPITestCase):
@@ -378,7 +401,7 @@ class TestLeaderboardEdgeCases(LeaderboardAPITestCase):
         self.assertEqual(entry["avg_per_day"], 120)
 
     def test_logs_only_in_current_month(self):
-        """Verify that leaderboard considers current month's data.
+        """Verify that leaderboard only includes current month's data.
 
         Returns:
             None
@@ -386,13 +409,24 @@ class TestLeaderboardEdgeCases(LeaderboardAPITestCase):
         user = self._create_user("alice", "alice@test.com")
         today = date.today()
 
+        # Add current month log
         self._add_screen_time(user.id, today, 120)
+
+        # Add previous month log (should be excluded)
+        last_month = today.replace(day=1) - timedelta(days=1)
+        self._add_screen_time(user.id, last_month, 200)
 
         response = self.client.get("/api/leaderboard/global")
 
         self.assertEqual(response.status_code, 200)
         data = response.get_json()
         self.assertEqual(len(data["leaderboard"]), 1)
+        entry = data["leaderboard"][0]
+
+        # Should only count current month's 120 minutes, not last month's 200
+        self.assertEqual(entry["days_logged"], 1)
+        self.assertEqual(entry["total_minutes"], 120)
+        self.assertEqual(entry["streak"], 1)
 
 
 if __name__ == "__main__":

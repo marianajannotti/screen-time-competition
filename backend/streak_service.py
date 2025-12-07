@@ -55,7 +55,7 @@ class StreakService:
         """Calculate streak as consecutive days with any screen time logged.
 
         Args:
-            month_days: List of days in the month (in order).
+            month_days: List of days in the month (in chronological order).
             day_minutes: Dict mapping day to total minutes logged.
 
         Returns:
@@ -86,7 +86,7 @@ class StreakService:
         - Total minutes is at or under the target goal
 
         Args:
-            month_days: List of days in the month (in order).
+            month_days: List of days in the month (in chronological order).
             day_minutes: Dict mapping day to total minutes logged.
             target_minutes: Daily goal target in minutes.
 
