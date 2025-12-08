@@ -91,10 +91,10 @@ export default function Friends(){
             <table className="lb-table">
               <thead>
                 <tr>
-                  <th>Name</th>
-                  <th>Avg. Screen Time</th>
-                  <th>Streak</th>
-                  <th></th>
+                  <th scope="col">Name</th>
+                  <th scope="col">Avg. Screen Time</th>
+                  <th scope="col">Streak</th>
+                  <th scope="col"></th>
                 </tr>
               </thead>
               <tbody>
