@@ -87,7 +87,7 @@ export default function Leaderboard(){
     const uid = user.user_id || user.id
     setAddingFriend(id)
     addFriendship(uid, id).then(()=>{
-      setFriends(prev => [...prev, id])
+      setFriends(prev => Array.from(new Set([...prev, id])))
       setAddingFriend(null)
     }).catch((e)=>{
       console.error('Failed to add friend', e)
