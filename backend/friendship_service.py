@@ -78,7 +78,8 @@ class FriendshipService:
             if existing.status == "rejected":
                 # Delete the rejected record and create a new pending request
                 db.session.delete(existing)
-                db.session.commit()
+                db.session.flush()
+
                 friendship = Friendship(
                     user_id=requester_id,
                     friend_id=target_user.id,

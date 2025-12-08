@@ -142,9 +142,17 @@ class Friendship(db.Model):
     status = db.Column(db.String(20), default="pending")  # pending/accepted
     created_at = db.Column(db.DateTime, default=current_time_utc)
 
-    # Relationships for eager loading
-    user = db.relationship("User", foreign_keys=[user_id], backref="friendships_sent")
-    friend = db.relationship("User", foreign_keys=[friend_id], backref="friendships_received")
+    # Relationships for eager loading and serialization
+    user = db.relationship(
+        "User",
+        foreign_keys=[user_id],
+        backref="friendships_sent",
+    )
+    friend = db.relationship(
+        "User",
+        foreign_keys=[friend_id],
+        backref="friendships_received",
+    )
 
     def to_dict(self) -> dict:
         """Serialize friendship metadata for API responses."""

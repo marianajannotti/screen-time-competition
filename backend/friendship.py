@@ -33,14 +33,15 @@ def send_request():
     Returns 201 with serialized friendship on success.
     """
 
-    if request.content_type != "application/json":
+    # Allow empty body to surface 400; reject non-JSON when body is present
+    if (request.content_length or 0) > 0 and not request.is_json:
         response = make_response(
             jsonify({"error": "Content-Type must be application/json"}), 415
         )
         return add_api_headers(response)
 
     try:
-        payload = request.get_json() or {}
+        payload = request.get_json(silent=True) or {}
         friendship = FriendshipService.send_request(
             requester_id=current_user.id,
             target_username=payload.get("username"),
@@ -62,10 +63,10 @@ def send_request():
     except ValidationError as exc:
         response = make_response(jsonify({"error": str(exc)}), 400)
         return add_api_headers(response)
-    except Exception as exc:  # pragma: no cover - bubbled to client
+    except Exception:  # pragma: no cover - bubbled to client
         db.session.rollback()
         response = make_response(
-            jsonify({"error": f"Unable to send request: {exc}"}), 500
+            jsonify({"error": "Unable to send request."}), 500
         )
         return add_api_headers(response)
 
@@ -95,10 +96,10 @@ def accept_request(friendship_id: int):
     except ValidationError as exc:
         response = make_response(jsonify({"error": str(exc)}), 400)
         return add_api_headers(response)
-    except Exception as exc:  # pragma: no cover - bubbled to client
+    except Exception:  # pragma: no cover - bubbled to client
         db.session.rollback()
         response = make_response(
-            jsonify({"error": f"Unable to accept request: {exc}"}), 500
+            jsonify({"error": "Unable to accept request."}), 500
         )
         return add_api_headers(response)
 
@@ -128,7 +129,7 @@ def reject_request(friendship_id: int):
     except ValidationError as exc:
         response = make_response(jsonify({"error": str(exc)}), 400)
         return add_api_headers(response)
-    except Exception as exc:  # pragma: no cover - bubbled to client
+    except Exception:  # pragma: no cover - bubbled to client
         db.session.rollback()
         response = make_response(
             jsonify({"error": "Unable to reject request."}), 500
@@ -153,7 +154,7 @@ def cancel_request(friendship_id: int):
     except ValidationError as exc:
         response = make_response(jsonify({"error": str(exc)}), 400)
         return add_api_headers(response)
-    except Exception as exc:  # pragma: no cover - bubbled to client
+    except Exception:  # pragma: no cover - bubbled to client
         db.session.rollback()
         response = make_response(
             jsonify({"error": "Unable to cancel request."}), 500

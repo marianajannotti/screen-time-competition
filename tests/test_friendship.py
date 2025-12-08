@@ -168,6 +168,13 @@ class FriendshipAPITestCase(unittest.TestCase):
         self.assertEqual(response.status_code, 400)
         self.assertIn("Username is required", response.get_json()["error"])
 
+    def test_missing_body(self):
+        """Test sending a request with no JSON body at all."""
+
+        response = self.client.post("/api/friendships/request")
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("Username is required", response.get_json()["error"])
+
     def test_already_friends(self):
         """Test trying to send a request when already friends."""
         # First, send request
@@ -350,6 +357,40 @@ class FriendshipAPITestCase(unittest.TestCase):
             "Only pending requests can be canceled",
             cancel_resp.get_json()["error"],
         )
+
+    def test_revive_rejected_friendship(self):
+        """A rejected request can be resent and returns to pending state."""
+
+        # User1 sends a request to User2
+        send_resp = self.client.post(
+            "/api/friendships/request",
+            json={"username": self.user2["username"]},
+        )
+        self.assertEqual(send_resp.status_code, 201)
+        friendship_id = send_resp.get_json()["friendship"]["id"]
+
+        # User2 rejects the request
+        self._logout()
+        self._login(self.user2)
+        reject_resp = self.client.post(
+            f"/api/friendships/{friendship_id}/reject"
+        )
+        self.assertEqual(reject_resp.status_code, 200)
+
+        # User1 sends another request; it should succeed and be pending
+        self._logout()
+        self._login(self.user1)
+        resend_resp = self.client.post(
+            "/api/friendships/request",
+            json={"username": self.user2["username"]},
+        )
+        self.assertEqual(resend_resp.status_code, 201)
+
+        # User2 should now see one incoming pending request
+        self._logout()
+        self._login(self.user2)
+        inbox = self.client.get("/api/friendships/").get_json()
+        self.assertEqual(len(inbox["incoming"]), 1)
 
 
 if __name__ == "__main__":
