@@ -33,8 +33,8 @@ def send_request():
     Returns 201 with serialized friendship on success.
     """
 
-    # Allow empty body to surface 400; reject non-JSON when body is present
-    if (request.content_length or 0) > 0 and not request.is_json:
+    # Reject non-JSON Content-Type for consistency with auth.py
+    if request.content_type != "application/json":
         response = make_response(
             jsonify({"error": "Content-Type must be application/json"}), 415
         )
