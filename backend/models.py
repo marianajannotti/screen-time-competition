@@ -143,8 +143,8 @@ class Friendship(db.Model):
     created_at = db.Column(db.DateTime, default=current_time_utc)
 
     # Relationships for eager loading
-    user = db.relationship("User", foreign_keys=[user_id])
-    friend = db.relationship("User", foreign_keys=[friend_id])
+    user = db.relationship("User", foreign_keys=[user_id], backref="friendships_sent")
+    friend = db.relationship("User", foreign_keys=[friend_id], backref="friendships_received")
 
     def to_dict(self) -> dict:
         """Serialize friendship metadata for API responses."""
