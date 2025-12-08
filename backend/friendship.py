@@ -17,7 +17,11 @@ friendship_bp = Blueprint(
 @friendship_bp.route("/", methods=["GET"])
 @login_required
 def list_friendships():
-    """Return accepted friends plus incoming/outgoing pending requests."""
+    """Return accepted friends plus incoming/outgoing pending requests.
+
+    Returns:
+        Response: JSON payload with friends, incoming, and outgoing lists.
+    """
 
     data = FriendshipService.list_friendships(user_id=current_user.id)
     response = make_response(jsonify(data), 200)
@@ -29,12 +33,16 @@ def list_friendships():
 def send_request():
     """Create a pending request to another user.
 
-    Input JSON: {"username": "target_username"}
-    Returns 201 with serialized friendship on success.
+    Args:
+        None directly; expects JSON body {"username": "target_username"}.
+
+    Returns:
+        Response: 201 with serialized friendship or 4xx/5xx on error.
     """
 
-    # Reject non-JSON Content-Type for consistency with auth.py
-    if request.content_type != "application/json":
+    # Reject non-JSON only when a body is present; allow empty to surface 400
+    content_len = request.content_length or 0
+    if content_len > 0 and request.content_type != "application/json":
         response = make_response(
             jsonify({"error": "Content-Type must be application/json"}), 415
         )
@@ -74,7 +82,14 @@ def send_request():
 @friendship_bp.route("/<int:friendship_id>/accept", methods=["POST"])
 @login_required
 def accept_request(friendship_id: int):
-    """Accept a pending request targeted at the authenticated user."""
+    """Accept a pending request targeted at the authenticated user.
+
+    Args:
+        friendship_id (int): Identifier of the friendship row to accept.
+
+    Returns:
+        Response: 200 with updated friendship or 4xx/5xx on error.
+    """
 
     try:
         friendship = FriendshipService.accept_request(
@@ -107,7 +122,14 @@ def accept_request(friendship_id: int):
 @friendship_bp.route("/<int:friendship_id>/reject", methods=["POST"])
 @login_required
 def reject_request(friendship_id: int):
-    """Reject a pending request targeted at the authenticated user."""
+    """Reject a pending request targeted at the authenticated user.
+
+    Args:
+        friendship_id (int): Identifier of the friendship row to reject.
+
+    Returns:
+        Response: 200 with updated friendship or 4xx/5xx on error.
+    """
 
     try:
         friendship = FriendshipService.reject_request(
@@ -140,7 +162,14 @@ def reject_request(friendship_id: int):
 @friendship_bp.route("/<int:friendship_id>/cancel", methods=["POST"])
 @login_required
 def cancel_request(friendship_id: int):
-    """Cancel a pending outgoing request created by the authenticated user."""
+    """Cancel a pending outgoing request created by the authenticated user.
+
+    Args:
+        friendship_id (int): Identifier of the friendship row to cancel.
+
+    Returns:
+        Response: 200 with confirmation or 4xx/5xx on error.
+    """
 
     try:
         FriendshipService.cancel_request(

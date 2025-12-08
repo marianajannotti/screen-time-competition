@@ -22,7 +22,15 @@ class FriendshipService:
     def _find_existing_pair(
         user_id: int, friend_id: int
     ) -> Optional[Friendship]:
-        """Lookup any friendship between two users in either direction."""
+        """Lookup any friendship between two users in either direction.
+
+        Args:
+            user_id (int): First user id.
+            friend_id (int): Second user id.
+
+        Returns:
+            Friendship | None: Matching friendship regardless of direction.
+        """
 
         return Friendship.query.filter(
             or_(
@@ -35,7 +43,14 @@ class FriendshipService:
 
     @staticmethod
     def _get_user_by_username(username: str) -> Optional[User]:
-        """Return user by username or None when missing."""
+        """Fetch a user by username.
+
+        Args:
+            username (str): Username to resolve.
+
+        Returns:
+            User | None: Resolved user or None.
+        """
 
         return User.query.filter_by(username=username.strip()).first()
 
@@ -161,6 +176,9 @@ class FriendshipService:
         Args:
             user_id (int): Authenticated user expected to be requester.
             friendship_id (int): Identifier of the friendship row.
+
+        Returns:
+            None
 
         Raises:
             ValidationError: When not found or not pending.
