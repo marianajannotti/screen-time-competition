@@ -38,10 +38,13 @@ if errorlevel 1 (
 )
 
 REM Check if backend dependencies are installed
-python -c "import flask" >nul 2>&1
+echo 🔍 Checking backend dependencies...
+python -c "import flask, flask_login, flask_cors, flask_mail, flask_sqlalchemy" >nul 2>&1
 if errorlevel 1 (
-    echo ⚠️  Flask not found. Installing backend dependencies...
+    echo ⚠️  Some backend dependencies missing. Installing...
     pip install -r requirements.txt
+) else (
+    echo ✅ Backend dependencies installed
 )
 
 REM Check if frontend dependencies are installed

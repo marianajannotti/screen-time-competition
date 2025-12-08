@@ -42,9 +42,12 @@ if ! command -v npm &> /dev/null; then
 fi
 
 # Check if backend dependencies are installed
-if ! python -c "import flask" 2>/dev/null; then
-    echo "⚠️  Flask not found. Installing backend dependencies..."
+echo "🔍 Checking backend dependencies..."
+if ! python -c "import flask, flask_login, flask_cors, flask_mail, flask_sqlalchemy" 2>/dev/null; then
+    echo "⚠️  Some backend dependencies missing. Installing..."
     pip install -r requirements.txt
+else
+    echo "✅ Backend dependencies installed"
 fi
 
 # Check if frontend dependencies are installed
