@@ -7,6 +7,12 @@ from backend.database import db
 class FriendshipAPITestCase(unittest.TestCase):
     """End-to-end tests for friendship API flows."""
     def setUp(self):
+        """Prepare app, database, and logged-in user1 test client.
+
+        Returns:
+            None
+        """
+
         self.app = create_app("testing")
         self.app_context = self.app.app_context()
         self.app_context.push()
@@ -29,18 +35,38 @@ class FriendshipAPITestCase(unittest.TestCase):
         self._login(self.user1)
 
     def tearDown(self):
+        """Clean up database/session resources after each test.
+
+        Returns:
+            None
+        """
+
         db.session.remove()
         db.drop_all()
         db.engine.dispose()
         self.app_context.pop()
 
     def _register_user(self, payload):
-        """Helper to register a user via API."""
+        """Register a user via API.
+
+        Args:
+            payload (dict): Body with username, email, and password.
+
+        Returns:
+            None
+        """
         response = self.client.post("/api/auth/register", json=payload)
         self.assertEqual(response.status_code, 201)
 
     def _login(self, payload):
-        """Helper to login and capture session cookies."""
+        """Login user and capture session cookies.
+
+        Args:
+            payload (dict): Body with username and password.
+
+        Returns:
+            None
+        """
         response = self.client.post(
             "/api/auth/login",
             json={
@@ -51,10 +77,19 @@ class FriendshipAPITestCase(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
 
     def _logout(self):
-        """Helper to clear session between user switches."""
+        """Logout current session to switch users.
+
+        Returns:
+            None
+        """
         self.client.post("/api/auth/logout")
 
     def test_send_friend_request_and_block_duplicates(self):
+        """Send a request then ensure duplicate is rejected with 400.
+
+        Returns:
+            None
+        """
         response = self.client.post(
             "/api/friendships/request",
             json={"username": self.user2["username"]},
@@ -69,6 +104,11 @@ class FriendshipAPITestCase(unittest.TestCase):
         self.assertIn("pending", duplicate.get_json()["error"])
 
     def test_accept_flow(self):
+        """Send, accept, and verify friends list updates for both users.
+
+        Returns:
+            None
+        """
         send_resp = self.client.post(
             "/api/friendships/request",
             json={"username": self.user2["username"]},
@@ -99,6 +139,11 @@ class FriendshipAPITestCase(unittest.TestCase):
         self.assertEqual(len(data_user1["friends"]), 1)
 
     def test_reject_flow(self):
+        """Send, reject, and confirm no friendships remain.
+
+        Returns:
+            None
+        """
         send_resp = self.client.post(
             "/api/friendships/request",
             json={"username": self.user2["username"]},
@@ -118,6 +163,11 @@ class FriendshipAPITestCase(unittest.TestCase):
         self.assertEqual(len(after_reject["friends"]), 0)
 
     def test_cancel_outgoing_request(self):
+        """Cancel an outgoing pending request and verify none remain.
+
+        Returns:
+            None
+        """
         send_resp = self.client.post(
             "/api/friendships/request",
             json={"username": self.user2["username"]},
@@ -134,6 +184,11 @@ class FriendshipAPITestCase(unittest.TestCase):
         self.assertEqual(len(data["friends"]), 0)
 
     def test_cannot_friend_self(self):
+        """Ensure self-friending is rejected with 400.
+
+        Returns:
+            None
+        """
         response = self.client.post(
             "/api/friendships/request",
             json={"username": self.user1["username"]},
@@ -142,7 +197,11 @@ class FriendshipAPITestCase(unittest.TestCase):
         self.assertIn("cannot add yourself", response.get_json()["error"])
 
     def test_user_not_found(self):
-        """Test sending a friend request to a non-existent username."""
+        """Send request to non-existent username and expect 400.
+
+        Returns:
+            None
+        """
         response = self.client.post(
             "/api/friendships/request",
             json={"username": "nonexistent_user_123"},
@@ -151,7 +210,11 @@ class FriendshipAPITestCase(unittest.TestCase):
         self.assertIn("User not found", response.get_json()["error"])
 
     def test_empty_username(self):
-        """Test sending a request with empty/blank username."""
+        """Validate empty or whitespace usernames are rejected with 400.
+
+        Returns:
+            None
+        """
         # Test with empty string
         response = self.client.post(
             "/api/friendships/request",
@@ -169,14 +232,22 @@ class FriendshipAPITestCase(unittest.TestCase):
         self.assertIn("Username is required", response.get_json()["error"])
 
     def test_missing_body(self):
-        """Test sending a request with no JSON body at all."""
+        """Ensure missing body yields 400 validation error.
+
+        Returns:
+            None
+        """
 
         response = self.client.post("/api/friendships/request")
         self.assertEqual(response.status_code, 400)
         self.assertIn("Username is required", response.get_json()["error"])
 
     def test_already_friends(self):
-        """Test trying to send a request when already friends."""
+        """Attempt new request after friendship established; expect 400.
+
+        Returns:
+            None
+        """
         # First, send request
         send_resp = self.client.post(
             "/api/friendships/request",
@@ -202,7 +273,11 @@ class FriendshipAPITestCase(unittest.TestCase):
         self.assertIn("already friends", response.get_json()["error"])
 
     def test_content_type_validation(self):
-        """Test sending non-JSON request to /request endpoint."""
+        """Non-JSON payload should return 415 content-type error.
+
+        Returns:
+            None
+        """
         response = self.client.post(
             "/api/friendships/request",
             data="username=bob",
@@ -215,7 +290,11 @@ class FriendshipAPITestCase(unittest.TestCase):
         )
 
     def test_cannot_accept_someone_elses_request(self):
-        """Test trying to accept a request not directed at you."""
+        """Unauthorized accept attempt should return 400.
+
+        Returns:
+            None
+        """
         # User3 sends a request to user2
         user3 = {
             "username": "charlie",
@@ -243,7 +322,11 @@ class FriendshipAPITestCase(unittest.TestCase):
         self.assertIn("Request not found", accept_resp.get_json()["error"])
 
     def test_cannot_reject_someone_elses_request(self):
-        """Test trying to reject a request not directed at you."""
+        """Unauthorized reject attempt should return 400.
+
+        Returns:
+            None
+        """
         # User1 sends a request to user2
         send_resp = self.client.post(
             "/api/friendships/request",
@@ -260,7 +343,11 @@ class FriendshipAPITestCase(unittest.TestCase):
         self.assertIn("Request not found", reject_resp.get_json()["error"])
 
     def test_cannot_cancel_someone_elses_request(self):
-        """Test trying to cancel a request you didn't create."""
+        """Canceling another user's request should return 400.
+
+        Returns:
+            None
+        """
         # User1 sends a request to user2
         send_resp = self.client.post(
             "/api/friendships/request",
@@ -279,7 +366,11 @@ class FriendshipAPITestCase(unittest.TestCase):
         self.assertIn("Request not found", cancel_resp.get_json()["error"])
 
     def test_cannot_accept_already_accepted_request(self):
-        """Test trying to accept an already accepted friendship."""
+        """Second accept on accepted friendship should return 400.
+
+        Returns:
+            None
+        """
         # Send and accept a request
         send_resp = self.client.post(
             "/api/friendships/request",
@@ -305,7 +396,11 @@ class FriendshipAPITestCase(unittest.TestCase):
         )
 
     def test_cannot_reject_already_accepted_request(self):
-        """Test trying to reject an already accepted friendship."""
+        """Reject on accepted friendship should return 400.
+
+        Returns:
+            None
+        """
         # Send and accept a request
         send_resp = self.client.post(
             "/api/friendships/request",
@@ -331,7 +426,11 @@ class FriendshipAPITestCase(unittest.TestCase):
         )
 
     def test_cannot_cancel_already_accepted_request(self):
-        """Test trying to cancel an already accepted friendship."""
+        """Cancel on accepted friendship should return 400.
+
+        Returns:
+            None
+        """
         # Send and accept a request
         send_resp = self.client.post(
             "/api/friendships/request",
@@ -359,7 +458,11 @@ class FriendshipAPITestCase(unittest.TestCase):
         )
 
     def test_revive_rejected_friendship(self):
-        """A rejected request can be resent and returns to pending state."""
+        """Resend after rejection should create a new pending request.
+
+        Returns:
+            None
+        """
 
         # User1 sends a request to User2
         send_resp = self.client.post(
