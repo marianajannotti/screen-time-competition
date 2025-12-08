@@ -15,6 +15,8 @@ export default function Friends(){
   const [friendIds, setFriendIds] = useState([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
+  const [addingFriend, setAddingFriend] = useState(null)
+  const [removingFriend, setRemovingFriend] = useState(null)
 
   useEffect(()=>{
     let cancelled = false
@@ -53,20 +55,30 @@ export default function Friends(){
 
   async function handleAdd(id){
     const uid = user?.user_id || user?.id
-    if (!uid) return
+    if (!uid || addingFriend === id) return
+    setAddingFriend(id)
     try{
       await addFriendship(uid, id)
       setFriendIds(prev => Array.from(new Set([...prev, id])))
-    }catch(e){ console.error('Add friend failed', e) }
+      setAddingFriend(null)
+    }catch(e){ 
+      console.error('Add friend failed', e)
+      setAddingFriend(null)
+    }
   }
 
   async function handleRemove(id){
     const uid = user?.user_id || user?.id
-    if (!uid) return
+    if (!uid || removingFriend === id) return
+    setRemovingFriend(id)
     try{
       await removeFriendship(uid, id)
       setFriendIds(prev => prev.filter(x=> x!==id))
-    }catch(e){ console.error('Remove friend failed', e) }
+      setRemovingFriend(null)
+    }catch(e){ 
+      console.error('Remove friend failed', e)
+      setRemovingFriend(null)
+    }
   }
 
   return (
@@ -103,7 +115,7 @@ export default function Friends(){
                     <td>{u.username}</td>
                     <td>{u._avg!==undefined ? minutesLabel(u._avg) : '—'}</td>
                     <td>{(u._streak||0)} day streak</td>
-                    <td><button className="btn-ghost" onClick={()=>handleRemove(u.user_id)}>Remove</button></td>
+                    <td><button className="btn-ghost" onClick={()=>handleRemove(u.user_id)} disabled={removingFriend === u.user_id}>{removingFriend === u.user_id ? 'Removing...' : 'Remove'}</button></td>
                   </tr>
                 ))}
               </tbody>
@@ -124,7 +136,7 @@ export default function Friends(){
                   <div className="muted" style={{fontSize:12}}>{u.email || ''}</div>
                 </div>
               </div>
-              <button className="btn-primary" onClick={()=>handleAdd(u.user_id)}>Add</button>
+              <button className="btn-primary" onClick={()=>handleAdd(u.user_id)} disabled={addingFriend === u.user_id}>{addingFriend === u.user_id ? 'Adding...' : 'Add'}</button>
             </div>
           ))}
           {!available.length && <div className="muted" style={{fontSize:14}}>No users match that search.</div>}
