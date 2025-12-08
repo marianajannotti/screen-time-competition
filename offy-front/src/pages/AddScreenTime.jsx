@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useNavigate } from 'react-router-dom'
+import { addScreenTimeEntry } from '../api/screenTimeApi'
 
 export default function AddScreenTime() {
   const { user } = useAuth()
@@ -10,8 +11,6 @@ export default function AddScreenTime() {
   const [minutes, setMinutes] = useState(15)
   const [appName, setAppName] = useState('')
   const [message, setMessage] = useState(null)
-  const [pendingMinutes, setPendingMinutes] = useState(null)
-  const [dupTarget, setDupTarget] = useState(null) // { app, date }
   const nav = useNavigate()
 
   useEffect(() => {
@@ -26,48 +25,45 @@ export default function AddScreenTime() {
   async function onSubmit(e) {
     e.preventDefault()
     if (!user) return
+    
     // Guard against future dates (should be impossible with max constraint but double-check)
     const todayStr = new Date().toISOString().slice(0,10)
     if (date > todayStr) {
       setMessage('Date cannot be in the future')
       return
     }
+    
     const totalMinutes = (Number(hours) || 0) * 60 + (Number(minutes) || 0)
-    // Duplicate detection (localStorage based for FE testing)
-    const storageKey = `offy_logs_${user.user_id}`
-    const existingRaw = localStorage.getItem(storageKey)
-    const existing = existingRaw ? JSON.parse(existingRaw) : []
-    const targetApp = appName || '__TOTAL__'
-    const dupIndex = existing.findIndex(l => l.date === date && l.app === targetApp)
-    if (dupIndex !== -1) {
-      setDupTarget({ app: targetApp, date })
-      setPendingMinutes(totalMinutes)
+    
+    if (totalMinutes <= 0) {
+      setMessage('Please enter a valid time')
       return
     }
-    // Save new entry
-    existing.push({ app: targetApp, date, minutes: totalMinutes })
-    localStorage.setItem(storageKey, JSON.stringify(existing))
-    setMessage('Saved')
-    setTimeout(close, 700)
+    
+    try {
+      // Send to backend API - backend expects hours and minutes separately
+      const data = {
+        date: date,
+        hours: Number(hours) || 0,
+        minutes: Number(minutes) || 0,
+      }
+      
+      // Only include app_name if it's not the total screen time option
+      if (appName) {
+        data.app_name = appName
+      }
+      
+      await addScreenTimeEntry(data)
+      
+      setMessage('Saved successfully!')
+      setTimeout(close, 700)
+    } catch (error) {
+      console.error('Error saving screen time:', error)
+      setMessage(error.message || 'Failed to save entry')
+    }
   }
 
-  function resolveDuplicate(replace) {
-    if (!dupTarget) return
-    if (replace) {
-      const storageKey = `offy_logs_${user.user_id}`
-      const existingRaw = localStorage.getItem(storageKey)
-      const arr = existingRaw ? JSON.parse(existingRaw) : []
-      const idx = arr.findIndex(l => l.date === dupTarget.date && l.app === dupTarget.app)
-      if (idx !== -1) {
-        arr[idx].minutes = pendingMinutes
-        localStorage.setItem(storageKey, JSON.stringify(arr))
-      }
-    }
-    setDupTarget(null)
-    setPendingMinutes(null)
-    setMessage(replace ? 'Updated' : 'Kept previous')
-    setTimeout(close, 700)
-  }
+  // Duplicate detection removed - backend handles validation
 
   if (!show) return null
 
@@ -121,19 +117,15 @@ export default function AddScreenTime() {
             <button type="button" className="btn-ghost" onClick={close}>Cancel</button>
           </div>
 
-          {message && <div style={{color:'#0b6'}}> {message} </div>}
-        </form>
-        {dupTarget && (
-          <div className="modal" style={{marginTop:20,background:'#fffbe6'}}>
-            <h4 style={{margin:'0 0 8px'}}>Entry already exists</h4>
-            <p style={{margin:'0 0 12px',fontSize:14}}>You already logged {dupTarget.app === '__TOTAL__' ? 'Total Screen Time' : dupTarget.app} for {dupTarget.date}. Replace previous value or keep existing?</p>
-            <div style={{display:'flex',gap:10}}>
-              <button type="button" className="btn-primary" onClick={()=>resolveDuplicate(true)}>Replace</button>
-              <button type="button" className="btn-ghost" onClick={()=>resolveDuplicate(false)}>Keep Previous</button>
-              <button type="button" className="btn-ghost" onClick={()=>{ setDupTarget(null); setPendingMinutes(null); }}>Cancel</button>
+          {message && (
+            <div style={{
+              color: message.includes('Failed') || message.includes('cannot') ? '#c33' : '#0b6',
+              marginTop: 8
+            }}>
+              {message}
             </div>
-          </div>
-        )}
+          )}
+        </form>
       </div>
     </div>
   )

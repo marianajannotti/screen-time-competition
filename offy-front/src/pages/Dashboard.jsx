@@ -1,5 +1,6 @@
-import React, { useMemo, useState } from 'react'
+import React, { useMemo, useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
+import { getScreenTimeEntries } from '../api/screenTimeApi'
 
 // Helpers
 function minutesLabel(mins) {
@@ -166,18 +167,55 @@ export default function Dashboard() {
   })
   const [showDailyModal, setShowDailyModal] = useState(false)
   const [showWeeklyModal, setShowWeeklyModal] = useState(false)
-  // Fetch logs (mock) and compute aggregates; replace with real API later.
-  const logs = useMemo(() => {
-    if (!user) return []
-    const raw = localStorage.getItem(`offy_logs_${user.user_id}`)
-    const arr = raw ? JSON.parse(raw) : []
-    // last 7 days filter
-    const today = new Date()
-    const cutoff = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 6)
-    return arr.filter(l => {
-      const d = new Date(l.date)
-      return d >= cutoff && d <= today
-    })
+  const [logs, setLogs] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+
+  // Fetch logs from backend API
+  useEffect(() => {
+    if (!user) {
+      setLogs([])
+      setLoading(false)
+      return
+    }
+
+    const fetchLogs = async () => {
+      try {
+        setLoading(true)
+        setError(null)
+        
+        // Get logs for the last 30 days to have enough data
+        const endDate = new Date().toISOString().slice(0, 10)
+        const startDate = new Date()
+        startDate.setDate(startDate.getDate() - 30)
+        const startDateStr = startDate.toISOString().slice(0, 10)
+        
+        const response = await getScreenTimeEntries({
+          start_date: startDateStr,
+          end_date: endDate,
+          limit: 100
+        })
+        
+        // Transform backend format to match the expected format
+        // Backend: { app_name, date, screen_time_minutes }
+        // Expected: { app, date, minutes }
+        const transformedLogs = response.logs.map(log => ({
+          app: log.app_name || '__TOTAL__',
+          date: log.date,
+          minutes: log.screen_time_minutes
+        }))
+        
+        setLogs(transformedLogs)
+      } catch (err) {
+        console.error('Error fetching screen time logs:', err)
+        setError(err.message || 'Failed to load screen time data')
+        setLogs([])
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchLogs()
   }, [user])
 
   const todayApps = useMemo(() => {
@@ -239,6 +277,40 @@ export default function Dashboard() {
     chartData[new Date(ds).toLocaleDateString('en-US',{weekday:'short'})] = { apps, remainder, total }
   })
   const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']
+
+  if (loading) {
+    return (
+      <main className="dashboard-main">
+        <div style={{display:'flex',alignItems:'center',justifyContent:'center',minHeight:'60vh'}}>
+          <div style={{textAlign:'center',color:'#666'}}>
+            <div style={{fontSize:'24px',marginBottom:'8px'}}>⏳</div>
+            <div>Loading your screen time data...</div>
+          </div>
+        </div>
+      </main>
+    )
+  }
+
+  if (error) {
+    return (
+      <main className="dashboard-main">
+        <div style={{display:'flex',alignItems:'center',justifyContent:'center',minHeight:'60vh'}}>
+          <div style={{textAlign:'center',padding:'24px',background:'#fee2e2',borderRadius:'12px',maxWidth:'500px'}}>
+            <div style={{fontSize:'24px',marginBottom:'8px'}}>⚠️</div>
+            <div style={{color:'#991b1b',fontWeight:'600',marginBottom:'8px'}}>Error loading data</div>
+            <div style={{color:'#7f1d1d',fontSize:'14px'}}>{error}</div>
+            <button 
+              className="btn-primary" 
+              onClick={() => window.location.reload()}
+              style={{marginTop:'16px'}}
+            >
+              Retry
+            </button>
+          </div>
+        </div>
+      </main>
+    )
+  }
 
   return (
     <main className="dashboard-main">
