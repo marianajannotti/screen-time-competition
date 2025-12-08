@@ -121,6 +121,14 @@ class Friendship(db.Model):
     """Friend relationships used by leaderboard features."""
 
     __tablename__ = "friendships"
+    __table_args__ = (
+        db.UniqueConstraint(
+            "user_id", "friend_id", name="uq_friendships_pair"
+        ),
+        db.CheckConstraint(
+            "user_id != friend_id", name="chk_friendships_no_self"
+        ),
+    )
 
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
@@ -142,7 +150,9 @@ class Friendship(db.Model):
             "user_id": self.user_id,
             "friend_id": self.friend_id,
             "status": self.status,
-            "created_at": self.created_at.isoformat(),
+            "created_at": (
+                self.created_at.isoformat() if self.created_at else None
+            ),
         }
 
     def __repr__(self):
