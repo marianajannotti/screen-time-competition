@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
-import { badgesApi } from '../services/badgesApi'
+import { badgesApi } from '../api/badgesApi'
 
 // Temporary mocked stats - moved outside component
 const MOCK_STATS = {

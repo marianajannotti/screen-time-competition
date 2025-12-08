@@ -1,12 +1,16 @@
 """Service layer for screen time operations."""
 
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timezone, timedelta
 from typing import Dict, Optional, Tuple, List
+import logging
+
+from sqlalchemy import func, and_
 
 from .database import db
-from .models import ScreenTimeLog
+from .models import ScreenTimeLog, User
 from .utils import canonicalize_app_name, list_allowed_apps
 
+logger = logging.getLogger(__name__)
 
 class ValidationError(Exception):
     """Raised when a request payload fails validation rules."""
@@ -123,12 +127,17 @@ class ScreenTimeService:
         # Check and award badges after creating a screen time entry
         try:
             from .badge_logic import BadgeLogic
-            awarded_badges = BadgeLogic.check_and_award_badges(user_id)
-            if awarded_badges:
-                print(f"Awarded badges to user {user_id}: {awarded_badges}")
-        except Exception as e:
-            # Don't fail the screen time entry if badge logic fails
-            print(f"Badge logic error for user {user_id}: {e}")
+        except ImportError as e:
+            # Badge logic module is missing; log and continue
+            logger.error(f"Badge logic import error for user {user_id}: {e}")
+        else:
+            try:
+                awarded_badges = BadgeLogic.check_and_award_badges(user_id)
+                if awarded_badges:
+                    logger.info(f"Awarded badges to user {user_id}: {awarded_badges}")
+            except Exception as e:
+                # Don't fail the screen time entry if badge logic fails
+                logger.error(f"Badge logic error for user {user_id}: {e}")
 
         return new_log
 
@@ -189,3 +198,180 @@ class ScreenTimeService:
     def get_allowed_apps() -> List[str]:
         """Return the list of allowed apps."""
         return list_allowed_apps()
+
+    # Statistical Analysis Methods
+    @staticmethod
+    def get_baseline_average(user_id: int) -> Optional[float]:
+        """Get user's baseline average (first week of data).
+        
+        Args:
+            user_id (int): ID of the user
+            
+        Returns:
+            float or None: Average screen time in minutes for the first week, or None if insufficient data
+        """
+        try:
+            first_log = ScreenTimeLog.query.filter_by(user_id=user_id).order_by(ScreenTimeLog.date).first()
+            if not first_log:
+                return None
+            
+            baseline_start = first_log.date
+            baseline_end = baseline_start + timedelta(days=6)
+            
+            result = db.session.query(func.avg(ScreenTimeLog.screen_time_minutes)).filter(
+                and_(
+                    ScreenTimeLog.user_id == user_id,
+                    ScreenTimeLog.date >= baseline_start,
+                    ScreenTimeLog.date <= baseline_end
+                )
+            ).scalar()
+            
+            return result
+        except Exception:
+            return None
+    
+    @staticmethod
+    def get_recent_week_average(user_id: int) -> Optional[float]:
+        """Get user's average screen time for the most recent week.
+        
+        Args:
+            user_id (int): ID of the user
+            
+        Returns:
+            float or None: Average screen time in minutes for the recent week, or None if insufficient data
+        """
+        try:
+            end_date = date.today()
+            start_date = end_date - timedelta(days=6)
+            
+            result = db.session.query(func.avg(ScreenTimeLog.screen_time_minutes)).filter(
+                and_(
+                    ScreenTimeLog.user_id == user_id,
+                    ScreenTimeLog.date >= start_date,
+                    ScreenTimeLog.date <= end_date
+                )
+            ).scalar()
+            
+            return result
+        except Exception:
+            return None
+    
+    @staticmethod
+    def get_monthly_average(user_id: int) -> Optional[float]:
+        """Get user's average screen time for the past month.
+        
+        Args:
+            user_id (int): ID of the user
+            
+        Returns:
+            float or None: Average screen time in minutes for the past month, or None if insufficient data
+        """
+        try:
+            end_date = date.today()
+            start_date = end_date - timedelta(days=29)  # 30 days total
+            
+            result = db.session.query(func.avg(ScreenTimeLog.screen_time_minutes)).filter(
+                and_(
+                    ScreenTimeLog.user_id == user_id,
+                    ScreenTimeLog.date >= start_date,
+                    ScreenTimeLog.date <= end_date
+                )
+            ).scalar()
+            
+            return result
+        except Exception:
+            return None
+    
+    @staticmethod
+    def get_user_weekly_rank(user_id: int) -> Optional[int]:
+        """Get user's rank for the current week based on lowest screen time.
+        
+        Args:
+            user_id (int): ID of the user
+            
+        Returns:
+            int or None: User's rank (1-based), or None if no data
+        """
+        try:
+            end_date = date.today()
+            start_date = end_date - timedelta(days=6)
+            
+            # Get weekly totals for all users
+            weekly_totals = db.session.query(
+                ScreenTimeLog.user_id,
+                func.sum(ScreenTimeLog.screen_time_minutes).label('total_minutes')
+            ).filter(
+                and_(
+                    ScreenTimeLog.date >= start_date,
+                    ScreenTimeLog.date <= end_date
+                )
+            ).group_by(ScreenTimeLog.user_id).order_by('total_minutes').all()
+            
+            # Find user's rank (1-based)
+            for rank, (uid, _) in enumerate(weekly_totals, 1):
+                if uid == user_id:
+                    return rank
+            
+            return None
+        except Exception:
+            return None
+    
+    @staticmethod
+    def check_weekend_achievement(user_id: int, threshold_minutes: int = 180) -> bool:
+        """Check if user met goals on both Saturday and Sunday of any weekend.
+        
+        Args:
+            user_id (int): ID of the user
+            threshold_minutes (int): Maximum minutes allowed per day (default: 180 = 3 hours)
+            
+        Returns:
+            bool: True if user has a weekend where both days are under threshold
+        """
+        try:
+            # Get recent weekend days (Saturday=5, Sunday=6)
+            logs = ScreenTimeLog.query.filter(
+                ScreenTimeLog.user_id == user_id
+            ).order_by(ScreenTimeLog.date.desc()).limit(60).all()
+            
+            # Filter weekend days in Python for cross-database compatibility
+            weekend_logs = [log for log in logs if log.date.weekday() in [5, 6]]  # Saturday=5, Sunday=6
+            
+            # Group by weekend and check if both days are under threshold
+            weekends = {}
+            for log in weekend_logs:
+                week_start = log.date - timedelta(days=log.date.weekday())
+                if week_start not in weekends:
+                    weekends[week_start] = []
+                weekends[week_start].append(log.screen_time_minutes)
+            
+            # Check if any weekend has both days under threshold
+            for weekend_logs_list in weekends.values():
+                if len(weekend_logs_list) >= 2 and all(minutes < threshold_minutes for minutes in weekend_logs_list):
+                    return True
+            
+            return False
+        except Exception:
+            return False
+    
+    @staticmethod
+    def check_low_usage_day(user_id: int, max_minutes: int = 60) -> bool:
+        """Check if user had any day under the specified usage threshold.
+        
+        Args:
+            user_id (int): ID of the user
+            max_minutes (int): Maximum minutes threshold (default: 60 = 1 hour)
+            
+        Returns:
+            bool: True if user has at least one day under the threshold
+        """
+        try:
+            low_usage_day = ScreenTimeLog.query.filter(
+                and_(
+                    ScreenTimeLog.user_id == user_id,
+                    ScreenTimeLog.screen_time_minutes < max_minutes
+                )
+            ).first()
+            
+            return low_usage_day is not None
+        except Exception:
+            return False

@@ -1,10 +1,11 @@
 """Badge achievement logic for automatically awarding badges based on user activities."""
 
-from datetime import datetime, timedelta, date
+from datetime import timedelta, date
 from sqlalchemy import func, and_
 from .database import db
-from .models import User, ScreenTimeLog, Goal, Friendship, Badge, UserBadge
+from .models import User, ScreenTimeLog, Friendship  
 from .badge_service import BadgeService
+from .screen_time_service import ScreenTimeService
 
 
 class BadgeLogic:
@@ -12,19 +13,35 @@ class BadgeLogic:
     
     @staticmethod
     def check_and_award_badges(user_id: int):
-        """Check all badge conditions and award applicable badges to a user."""
+        """Check all badge conditions and award applicable badges to a user atomically.
+        
+        Args:
+            user_id (int): ID of the user to check badges for
+            
+        Returns:
+            list: List of badge names that were newly awarded
+        """
+        if user_id <= 0:
+            return []
+            
         user = User.query.get(user_id)
         if not user:
             return []
         
         awarded_badges = []
         
-        # Check each category of badges
-        awarded_badges.extend(BadgeLogic._check_streak_badges(user))
-        awarded_badges.extend(BadgeLogic._check_reduction_badges(user))
-        awarded_badges.extend(BadgeLogic._check_social_badges(user))
-        awarded_badges.extend(BadgeLogic._check_leaderboard_badges(user))
-        awarded_badges.extend(BadgeLogic._check_prestige_badges(user))
+        # Wrap the badge awarding in a single transaction for atomicity
+        try:
+            with db.session.begin():
+                awarded_badges.extend(BadgeLogic._check_streak_badges(user))
+                awarded_badges.extend(BadgeLogic._check_reduction_badges(user))
+                awarded_badges.extend(BadgeLogic._check_social_badges(user))
+                awarded_badges.extend(BadgeLogic._check_leaderboard_badges(user))
+                awarded_badges.extend(BadgeLogic._check_prestige_badges(user))
+        except Exception as e:
+            db.session.rollback()
+            print(f"Error checking badges for user {user_id}: {str(e)}")
+            return []
         
         return awarded_badges
     
@@ -49,7 +66,7 @@ class BadgeLogic:
                     awarded.append(badge_name)
         
         # Weekend Warrior - check if user met goals on both Saturday and Sunday
-        if BadgeLogic._check_weekend_warrior(user.id):
+        if ScreenTimeService.check_weekend_achievement(user.id, threshold_minutes=180):
             success, _ = BadgeService.award_badge(user.id, 'Weekend Warrior')
             if success:
                 awarded.append('Weekend Warrior')
@@ -62,12 +79,12 @@ class BadgeLogic:
         awarded = []
         
         # Get user's baseline week (first week of data)
-        baseline_avg = BadgeLogic._get_baseline_average(user.id)
-        if baseline_avg is None:
+        baseline_avg = ScreenTimeService.get_baseline_average(user.id)
+        if baseline_avg is None or baseline_avg <= 0:
             return awarded
         
         # Get recent week average
-        recent_avg = BadgeLogic._get_recent_week_average(user.id)
+        recent_avg = ScreenTimeService.get_recent_week_average(user.id)
         if recent_avg is None:
             return awarded
         
@@ -91,7 +108,7 @@ class BadgeLogic:
                 awarded.append('Half-Life')
         
         # One Hour Club - check if user stayed under 1h social media in a day
-        if BadgeLogic._check_one_hour_club(user.id):
+        if ScreenTimeService.check_low_usage_day(user.id, max_minutes=60):
             success, _ = BadgeService.award_badge(user.id, 'One Hour Club')
             if success:
                 awarded.append('One Hour Club')
@@ -137,9 +154,9 @@ class BadgeLogic:
         awarded = []
         
         # Get user's rank for the current week
-        rank = BadgeLogic._get_user_weekly_rank(user.id)
+        rank = ScreenTimeService.get_user_weekly_rank(user.id)
         
-        if rank is not None:
+        if rank is not None and rank > 0:
             if rank <= 3:
                 success, _ = BadgeService.award_badge(user.id, 'Top 3')
                 if success:
@@ -147,7 +164,7 @@ class BadgeLogic:
             
             # Top 10% - need to calculate based on total user count
             total_users = User.query.count()
-            if rank <= max(1, total_users * 0.1):
+            if total_users > 0 and rank <= max(1, int(total_users * 0.1)):
                 success, _ = BadgeService.award_badge(user.id, 'Top 10%')
                 if success:
                     awarded.append('Top 10%')
@@ -160,7 +177,7 @@ class BadgeLogic:
         awarded = []
         
         # Offline Legend - average < 2h/day for a full month
-        monthly_avg = BadgeLogic._get_monthly_average(user.id)
+        monthly_avg = ScreenTimeService.get_monthly_average(user.id)
         if monthly_avg is not None and monthly_avg < 120:  # 2 hours
             success, _ = BadgeService.award_badge(user.id, 'Offline Legend')
             if success:
@@ -173,124 +190,3 @@ class BadgeLogic:
                 awarded.append('Master of Attention')
         
         return awarded
-    
-    # Helper methods
-    @staticmethod
-    def _get_baseline_average(user_id: int):
-        """Get user's baseline average (first week of data)."""
-        first_log = ScreenTimeLog.query.filter_by(user_id=user_id).order_by(ScreenTimeLog.date).first()
-        if not first_log:
-            return None
-        
-        baseline_start = first_log.date
-        baseline_end = baseline_start + timedelta(days=6)
-        
-        result = db.session.query(func.avg(ScreenTimeLog.screen_time_minutes)).filter(
-            and_(
-                ScreenTimeLog.user_id == user_id,
-                ScreenTimeLog.date >= baseline_start,
-                ScreenTimeLog.date <= baseline_end
-            )
-        ).scalar()
-        
-        return result
-    
-    @staticmethod
-    def _get_recent_week_average(user_id: int):
-        """Get user's average screen time for the most recent week."""
-        end_date = date.today()
-        start_date = end_date - timedelta(days=6)
-        
-        result = db.session.query(func.avg(ScreenTimeLog.screen_time_minutes)).filter(
-            and_(
-                ScreenTimeLog.user_id == user_id,
-                ScreenTimeLog.date >= start_date,
-                ScreenTimeLog.date <= end_date
-            )
-        ).scalar()
-        
-        return result
-    
-    @staticmethod
-    def _get_monthly_average(user_id: int):
-        """Get user's average screen time for the past month."""
-        end_date = date.today()
-        start_date = end_date - timedelta(days=29)  # 30 days total
-        
-        result = db.session.query(func.avg(ScreenTimeLog.screen_time_minutes)).filter(
-            and_(
-                ScreenTimeLog.user_id == user_id,
-                ScreenTimeLog.date >= start_date,
-                ScreenTimeLog.date <= end_date
-            )
-        ).scalar()
-        
-        return result
-    
-    @staticmethod
-    def _check_weekend_warrior(user_id: int):
-        """Check if user met goals on both Saturday and Sunday of any weekend."""
-        # This is a simplified check - in real implementation, you'd compare against user's goals
-        # For now, we'll check if they had low screen time on a weekend
-        
-        # Get recent weekend days (Saturday=5, Sunday=6)
-        logs = ScreenTimeLog.query.filter(
-            and_(
-                ScreenTimeLog.user_id == user_id,
-                func.strftime('%w', ScreenTimeLog.date).in_(['6', '0'])  # Saturday and Sunday
-            )
-        ).order_by(ScreenTimeLog.date.desc()).limit(10).all()
-        
-        # Group by weekend and check if both days are under a reasonable threshold
-        weekends = {}
-        for log in logs:
-            week_start = log.date - timedelta(days=log.date.weekday())
-            if week_start not in weekends:
-                weekends[week_start] = []
-            weekends[week_start].append(log.screen_time_minutes)
-        
-        # Check if any weekend has both days under 3 hours (180 minutes)
-        for weekend_logs in weekends.values():
-            if len(weekend_logs) >= 2 and all(minutes < 180 for minutes in weekend_logs):
-                return True
-        
-        return False
-    
-    @staticmethod
-    def _check_one_hour_club(user_id: int):
-        """Check if user stayed under 1h of social media in any day."""
-        # This is simplified - in real implementation, you'd filter by social media apps
-        # For now, we'll check if total screen time was under 1 hour on any day
-        
-        low_usage_day = ScreenTimeLog.query.filter(
-            and_(
-                ScreenTimeLog.user_id == user_id,
-                ScreenTimeLog.screen_time_minutes < 60  # Under 1 hour
-            )
-        ).first()
-        
-        return low_usage_day is not None
-    
-    @staticmethod
-    def _get_user_weekly_rank(user_id: int):
-        """Get user's rank for the current week based on lowest screen time."""
-        end_date = date.today()
-        start_date = end_date - timedelta(days=6)
-        
-        # Get weekly totals for all users
-        weekly_totals = db.session.query(
-            ScreenTimeLog.user_id,
-            func.sum(ScreenTimeLog.screen_time_minutes).label('total_minutes')
-        ).filter(
-            and_(
-                ScreenTimeLog.date >= start_date,
-                ScreenTimeLog.date <= end_date
-            )
-        ).group_by(ScreenTimeLog.user_id).order_by('total_minutes').all()
-        
-        # Find user's rank (1-based)
-        for rank, (uid, _) in enumerate(weekly_totals, 1):
-            if uid == user_id:
-                return rank
-        
-        return None

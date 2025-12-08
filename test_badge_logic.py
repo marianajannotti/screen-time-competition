@@ -1,6 +1,18 @@
 #!/usr/bin/env python3
 """
 Test script to update a user's streak and trigger badge logic.
+
+Test instructions:
+1) Ensure the Flask backend dependencies are installed:
+   pip install -r backend/requirements.txt
+2) Make sure you have a development database set up (instance/app.db) and migrations applied if any.
+   The repo uses a simple SQLite db by default; running `python run.py` will initialize it.
+3) Start the backend once to create tables:
+   python run.py
+4) Then run this test file directly to validate badge logic:
+   python test_badge_logic.py
+5) Alternatively, run all tests:
+   python -m pytest -q
 """
 
 import sys

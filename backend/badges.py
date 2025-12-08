@@ -1,11 +1,10 @@
 """Badge API endpoints for the Screen Time Competition backend."""
 
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, request, make_response
 from flask_login import login_required, current_user
 
 from .badge_service import BadgeService
-from .models import User
-
+from .utils import add_api_headers
 
 # Create the blueprint
 badges_bp = Blueprint("badges", __name__, url_prefix="/api")
@@ -20,9 +19,11 @@ def get_all_badges():
     """
     try:
         badges = BadgeService.get_all_badges()
-        return jsonify([badge.to_dict() for badge in badges]), 200
+        response = make_response(jsonify([badge.to_dict() for badge in badges]), 200)
+        return add_api_headers(response)
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        response = make_response(jsonify({"error": str(e)}), 500)
+        return add_api_headers(response)
 
 
 @badges_bp.route("/users/<int:user_id>/badges", methods=["GET"])
@@ -36,15 +37,23 @@ def get_user_badges(user_id: int):
     Returns:
         JSON: List of badges earned by the user with timestamps
     """
+    # Validate user_id
+    if user_id <= 0:
+        response = make_response(jsonify({"error": "Invalid user ID"}), 400)
+        return add_api_headers(response)
+    
     try:
         # Only allow users to view their own badges or admin functionality
         if current_user.id != user_id:
-            return jsonify({"error": "Access denied"}), 403
+            response = make_response(jsonify({"error": "Access denied"}), 403)
+            return add_api_headers(response)
             
         user_badges = BadgeService.get_user_badges(user_id)
-        return jsonify([user_badge.to_dict() for user_badge in user_badges]), 200
+        response = make_response(jsonify([user_badge.to_dict() for user_badge in user_badges]), 200)
+        return add_api_headers(response)
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        response = make_response(jsonify({"error": str(e)}), 500)
+        return add_api_headers(response)
 
 
 @badges_bp.route("/users/<int:user_id>/badges", methods=["POST"])
@@ -61,27 +70,37 @@ def award_badge(user_id: int):
     Returns:
         JSON: Success/error message
     """
+    # Validate user_id
+    if user_id <= 0:
+        response = make_response(jsonify({"error": "Invalid user ID"}), 400)
+        return add_api_headers(response)
+    
     try:
         data = request.get_json()
         if not data or 'badge_name' not in data:
-            return jsonify({"error": "badge_name is required"}), 400
+            response = make_response(jsonify({"error": "badge_name is required"}), 400)
+            return add_api_headers(response)
         
         badge_name = data['badge_name']
         
         # For now, only allow users to award badges to themselves (for testing)
         # In production, this might be admin-only or system-triggered
         if current_user.id != user_id:
-            return jsonify({"error": "Access denied"}), 403
+            response = make_response(jsonify({"error": "Access denied"}), 403)
+            return add_api_headers(response)
         
         success, message = BadgeService.award_badge(user_id, badge_name)
         
         if success:
-            return jsonify({"message": message}), 201
+            response = make_response(jsonify({"message": message}), 201)
+            return add_api_headers(response)
         else:
-            return jsonify({"error": message}), 400
+            response = make_response(jsonify({"error": message}), 400)
+            return add_api_headers(response)
             
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        response = make_response(jsonify({"error": str(e)}), 500)
+        return add_api_headers(response)
 
 
 @badges_bp.route("/users/<int:user_id>/badges/check", methods=["POST"])
@@ -95,32 +114,48 @@ def check_user_badges(user_id: int):
     Returns:
         JSON: List of newly awarded badges
     """
+    # Validate user_id
+    if user_id <= 0:
+        response = make_response(jsonify({"error": "Invalid user ID"}), 400)
+        return add_api_headers(response)
+    
     try:
         # Only allow users to check their own badges or admin functionality
         if current_user.id != user_id:
-            return jsonify({"error": "Access denied"}), 403
+            response = make_response(jsonify({"error": "Access denied"}), 403)
+            return add_api_headers(response)
         
         from .badge_logic import BadgeLogic
         awarded_badges = BadgeLogic.check_and_award_badges(user_id)
         
-        return jsonify({
+        response = make_response(jsonify({
             "message": f"Badge check completed for user {user_id}",
             "awarded_badges": awarded_badges
-        }), 200
+        }), 200)
+        return add_api_headers(response)
         
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        response = make_response(jsonify({"error": str(e)}), 500)
+        return add_api_headers(response)
 
 
 @badges_bp.route("/badges/initialize", methods=["POST"])
+@login_required
 def initialize_badges():
     """Initialize default badges in the database (admin/setup use).
     
     Returns:
         JSON: Success message
     """
+    # Require admin privileges
+    if not getattr(current_user, "is_admin", False):
+        response = make_response(jsonify({"error": "Admin access required"}), 403)
+        return add_api_headers(response)
+    
     try:
         BadgeService.initialize_badges()
-        return jsonify({"message": "Badges initialized successfully"}), 200
+        response = make_response(jsonify({"message": "Badges initialized successfully"}), 200)
+        return add_api_headers(response)
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        response = make_response(jsonify({"error": str(e)}), 500)
+        return add_api_headers(response)

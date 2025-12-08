@@ -1,9 +1,12 @@
 """Badge service for managing badges and user badge achievements."""
 
+import logging
 from .database import db
-from .models import Badge, UserBadge, User
+from .models import Badge, UserBadge
 from .utils import current_time_utc
+from sqlalchemy.orm import joinedload
 
+logger = logging.getLogger(__name__)
 
 class BadgeService:
     """Service class for badge-related operations."""
@@ -15,10 +18,13 @@ class BadgeService:
     
     @staticmethod
     def get_user_badges(user_id: int):
-        """Get all badges earned by a specific user."""
-        user_badges = db.session.query(UserBadge).join(Badge).filter(
-            UserBadge.user_id == user_id
-        ).all()
+        """Get all badges earned by a specific user with eager-loaded Badge relation."""
+        user_badges = (
+            db.session.query(UserBadge)
+            .options(joinedload(UserBadge.badge))
+            .filter(UserBadge.user_id == user_id)
+            .all()
+        )
         return user_badges
     
     @staticmethod
@@ -101,4 +107,4 @@ class BadgeService:
                 db.session.add(badge)
         
         db.session.commit()
-        print(f"Initialized {len(default_badges)} badges in database")
+        logger.info("Initialized %d badges in database", len(default_badges))
