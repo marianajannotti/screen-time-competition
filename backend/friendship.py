@@ -95,6 +95,12 @@ def accept_request(friendship_id: int):
     except ValidationError as exc:
         response = make_response(jsonify({"error": str(exc)}), 400)
         return add_api_headers(response)
+    except Exception as exc:  # pragma: no cover - bubbled to client
+        db.session.rollback()
+        response = make_response(
+            jsonify({"error": f"Unable to accept request: {exc}"}), 500
+        )
+        return add_api_headers(response)
 
 
 @friendship_bp.route("/<int:friendship_id>/reject", methods=["POST"])
@@ -122,6 +128,12 @@ def reject_request(friendship_id: int):
     except ValidationError as exc:
         response = make_response(jsonify({"error": str(exc)}), 400)
         return add_api_headers(response)
+    except Exception as exc:  # pragma: no cover - bubbled to client
+        db.session.rollback()
+        response = make_response(
+            jsonify({"error": f"Unable to reject request: {exc}"}), 500
+        )
+        return add_api_headers(response)
 
 
 @friendship_bp.route("/<int:friendship_id>/cancel", methods=["POST"])
@@ -140,4 +152,10 @@ def cancel_request(friendship_id: int):
 
     except ValidationError as exc:
         response = make_response(jsonify({"error": str(exc)}), 400)
+        return add_api_headers(response)
+    except Exception as exc:  # pragma: no cover - bubbled to client
+        db.session.rollback()
+        response = make_response(
+            jsonify({"error": f"Unable to cancel request: {exc}"}), 500
+        )
         return add_api_headers(response)

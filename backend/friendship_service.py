@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Dict, List, Optional
 
 from sqlalchemy import or_
+from sqlalchemy.orm import selectinload
 
 from .database import db
 from .models import Friendship, User
@@ -76,12 +77,17 @@ class FriendshipService:
                 raise ValidationError("A pending request already exists.")
 
             if existing.status == "rejected":
-                existing.user_id = requester_id
-                existing.friend_id = target_user.id
-                existing.status = "pending"
-                existing.created_at = current_time_utc()
+                # Delete the rejected record and create a new pending request
+                db.session.delete(existing)
                 db.session.commit()
-                return existing
+                friendship = Friendship(
+                    user_id=requester_id,
+                    friend_id=target_user.id,
+                    status="pending",
+                )
+                db.session.add(friendship)
+                db.session.commit()
+                return friendship
 
         friendship = Friendship(
             user_id=requester_id,
@@ -182,21 +188,35 @@ class FriendshipService:
             dict: Keys friends/incoming/outgoing with serialized payloads.
         """
 
-        accepted = Friendship.query.filter(
-            Friendship.status == "accepted",
-            or_(
-                Friendship.user_id == user_id,
-                Friendship.friend_id == user_id,
-            ),
-        ).all()
+        accepted = (
+            Friendship.query.options(
+                selectinload(Friendship.user), selectinload(Friendship.friend)
+            )
+            .filter(
+                Friendship.status == "accepted",
+                or_(
+                    Friendship.user_id == user_id,
+                    Friendship.friend_id == user_id,
+                ),
+            )
+            .all()
+        )
 
-        incoming = Friendship.query.filter_by(
-            status="pending", friend_id=user_id
-        ).all()
+        incoming = (
+            Friendship.query.options(
+                selectinload(Friendship.user), selectinload(Friendship.friend)
+            )
+            .filter_by(status="pending", friend_id=user_id)
+            .all()
+        )
 
-        outgoing = Friendship.query.filter_by(
-            status="pending", user_id=user_id
-        ).all()
+        outgoing = (
+            Friendship.query.options(
+                selectinload(Friendship.user), selectinload(Friendship.friend)
+            )
+            .filter_by(status="pending", user_id=user_id)
+            .all()
+        )
 
         return {
             "friends": [
@@ -225,12 +245,12 @@ class FriendshipService:
             dict: Friendship payload with direction and counterpart info.
         """
 
-        counterpart_id = (
-            friendship.friend_id
+        # Use preloaded relationships instead of separate queries
+        counterpart = (
+            friendship.friend
             if friendship.user_id == viewer_id
-            else friendship.user_id
+            else friendship.user
         )
-        counterpart = User.query.get(counterpart_id)
 
         return {
             **friendship.to_dict(),
