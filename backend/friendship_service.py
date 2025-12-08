@@ -9,7 +9,6 @@ from sqlalchemy.orm import selectinload
 
 from .database import db
 from .models import Friendship, User
-from .utils import current_time_utc
 
 
 class ValidationError(Exception):
