@@ -76,12 +76,17 @@ class FriendshipService:
                 raise ValidationError("A pending request already exists.")
 
             if existing.status == "rejected":
-                existing.user_id = requester_id
-                existing.friend_id = target_user.id
-                existing.status = "pending"
-                existing.created_at = current_time_utc()
+                # Delete the rejected record and create a new pending request
+                db.session.delete(existing)
                 db.session.commit()
-                return existing
+                friendship = Friendship(
+                    user_id=requester_id,
+                    friend_id=target_user.id,
+                    status="pending",
+                )
+                db.session.add(friendship)
+                db.session.commit()
+                return friendship
 
         friendship = Friendship(
             user_id=requester_id,
