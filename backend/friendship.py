@@ -156,6 +156,6 @@ def cancel_request(friendship_id: int):
     except Exception as exc:  # pragma: no cover - bubbled to client
         db.session.rollback()
         response = make_response(
-            jsonify({"error": f"Unable to cancel request: {exc}"}), 500
+            jsonify({"error": "Unable to cancel request."}), 500
         )
         return add_api_headers(response)
