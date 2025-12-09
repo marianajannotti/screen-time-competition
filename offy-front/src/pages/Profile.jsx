@@ -1,37 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
-
-// Badge data derived from documentation/badges.md - moved outside component to avoid recreation on each render
-const ALL_BADGES = [
-  // Streak & Consistency
-  { name: 'Fresh Start', desc: 'Complete your first day meeting your screen-time goal.', type: 'streak' },
-  { name: 'Weekend Warrior', desc: 'Hit your goal on a Saturday and Sunday.', type: 'streak' },
-  { name: '7-Day Focus', desc: '7 days in a row hitting daily goal.', type: 'streak' },
-  { name: 'Habit Builder', desc: '14-day streak.', type: 'streak' },
-  { name: 'Unstoppable', desc: '30-day streak.', type: 'streak' },
-  { name: 'Bounce Back', desc: 'Lose a streak, then start a new one the next day.', type: 'streak' },
-  // Screen-Time Reduction
-  { name: 'Tiny Wins', desc: 'Reduce total time by 5% from your baseline week.', type: 'reduction' },
-  { name: 'The Declutter', desc: 'Reduce total screen time by 10% from baseline.', type: 'reduction' },
-  { name: 'Half-Life', desc: 'Reduce screen time by 50% from baseline.', type: 'reduction' },
-  { name: 'One Hour Club', desc: 'Stay under 1h of social media in a day.', type: 'reduction' },
-  { name: 'Digital Minimalist', desc: 'Average < 2 hours/day over a whole week.', type: 'reduction' },
-  // Social & Community
-  { name: 'Team Player', desc: 'Add your first friend.', type: 'social' },
-  { name: 'The Connector', desc: 'Add 10 friends.', type: 'social' },
-  { name: 'Challenge Accepted', desc: 'Join your first challenge.', type: 'social' },
-  { name: 'Friendly Rival', desc: 'Participate in 5 challenges.', type: 'social' },
-  { name: 'Community Champion', desc: 'Win a weekly challenge among friends.', type: 'social' },
-  // Leaderboard
-  { name: 'Top 10%', desc: 'Be in top 10% of the leaderboard in a week.', type: 'leaderboard' },
-  { name: 'Top 3', desc: 'Finish as #1, #2, or #3 among friends.', type: 'leaderboard' },
-  { name: 'The Phantom', desc: 'Win a challenge with the lowest screen time without chatting.', type: 'leaderboard' },
-  { name: 'Comeback Kid', desc: 'Go from bottom half to top 3 in the next challenge.', type: 'leaderboard' },
-  // Prestige / Long-Term
-  { name: 'Offline Legend', desc: 'Average < 2h/day for a full month.', type: 'prestige' },
-  { name: 'Master of Attention', desc: 'Maintain a 30-day goal streak and < 2h/day average.', type: 'prestige' },
-  { name: 'Life > Screen', desc: 'Complete a full 24h digital detox.', type: 'prestige' },
-]
+import { badgesApi } from '../api/badgesApi'
 
 // Temporary mocked stats - moved outside component
 const MOCK_STATS = {
@@ -68,9 +37,12 @@ export default function Profile() {
     return source.trim().charAt(0).toUpperCase()
   }, [user])
 
-  // Simple owned mapping (mock): first few owned for demo
-  const ownedSet = new Set(['7-Day Focus', 'Digital Minimalist', 'One Hour Club', 'Top 3'])
-
+  // Badge state
+  const [allBadges, setAllBadges] = useState([])
+  const [userBadges, setUserBadges] = useState([])
+  const [badgesLoading, setBadgesLoading] = useState(true)
+  const [badgesError, setBadgesError] = useState(null)
+  
   const [modalOpen, setModalOpen] = useState(false)
   const [activeBadge, setActiveBadge] = useState(null)
   const [showAllLocked, setShowAllLocked] = useState(false)
@@ -92,6 +64,31 @@ export default function Profile() {
     }
   }
 
+  // Fetch badge data on mount
+  useEffect(() => {
+    const fetchBadgesData = async () => {
+      setBadgesLoading(true)
+      setBadgesError(null)
+      
+      try {
+        const [badges, userBadgeData] = await Promise.all([
+          badgesApi.getAllBadges(),
+          user?.id ? badgesApi.getUserBadges(user.id) : Promise.resolve([])
+        ])
+        
+        setAllBadges(badges)
+        setUserBadges(userBadgeData)
+      } catch (error) {
+        console.error('Failed to fetch badge data:', error)
+        setBadgesError('Failed to load badges. Please try again later.')
+      } finally {
+        setBadgesLoading(false)
+      }
+    }
+
+    fetchBadgesData()
+  }, [user?.id])
+
   // Handle Escape key to close modal
   useEffect(() => {
     if (!modalOpen) return
@@ -102,14 +99,23 @@ export default function Profile() {
     return () => window.removeEventListener('keydown', handleEscape)
   }, [modalOpen])
 
+  // Create lookup for earned badges
+  const earnedBadgeMap = useMemo(() => {
+    const map = new Map()
+    userBadges.forEach(badge => {
+      map.set(badge.name, badge.earnedAt)
+    })
+    return map
+  }, [userBadges])
+
   // Memoize filtered badge lists
   const unlockedBadges = useMemo(
-    () => ALL_BADGES.filter((b) => ownedSet.has(b.name)),
-    [ownedSet]
+    () => allBadges.filter((b) => earnedBadgeMap.has(b.name)),
+    [allBadges, earnedBadgeMap]
   )
   const lockedBadges = useMemo(
-    () => ALL_BADGES.filter((b) => !ownedSet.has(b.name)),
-    [ownedSet]
+    () => allBadges.filter((b) => !earnedBadgeMap.has(b.name)),
+    [allBadges, earnedBadgeMap]
   )
 
   return (
@@ -146,6 +152,16 @@ export default function Profile() {
       {/* Badges per documentation */}
       <section className="card badges-section">
         <h2 className="badges-title">Badges</h2>
+        {badgesError && (
+          <div className="error-message" style={{ color: '#e74c3c', marginBottom: '1rem' }}>
+            {badgesError}
+          </div>
+        )}
+        {badgesLoading && (
+          <div className="loading-message" style={{ color: '#666', marginBottom: '1rem' }}>
+            Loading badges...
+          </div>
+        )}
         {/* Unlocked */}
         <div className="badges-header">
           <h3 className="badges-subtitle">Unlocked</h3>
@@ -171,7 +187,7 @@ export default function Profile() {
                 <div className="badge-icon">{BADGE_ICONS[b.type] || '🔥'}</div>
                 <div className="badge-info">
                   <div className="badge-name">{b.name}</div>
-                  <div className="badge-date muted">{sampleDateFor(b.name)}</div>
+                  <div className="badge-date muted">{formatEarnedDate(earnedBadgeMap.get(b.name))}</div>
                 </div>
               </div>
             ))}
@@ -244,12 +260,18 @@ export default function Profile() {
   )
 }
 
-function sampleDateFor(name) {
-  const map = {
-    '7-Day Focus': 'Nov 3, 2025',
-    'Digital Minimalist': 'Nov 1, 2025',
-    'One Hour Club': 'Nov 8, 2025',
-    'Top 3': 'Oct 26, 2025',
+function formatEarnedDate(dateString) {
+  if (!dateString) return ''
+  
+  try {
+    const date = new Date(dateString)
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    })
+  } catch (error) {
+    console.error('Error formatting date:', error)
+    return ''
   }
-  return map[name] || ''
 }
