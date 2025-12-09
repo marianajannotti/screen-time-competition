@@ -9,6 +9,38 @@ function minutesLabel(mins) {
   return `${h}h ${m}m`
 }
 
+/**
+ * Show tooltip for chart bar segments with positioning relative to mouse cursor.
+ * @param {MouseEvent} e - The mouse event from the bar segment
+ * @param {string} day - Day of the week (e.g., "Mon", "Tue")
+ * @param {string} label - Label to display (e.g., "Instagram", "Total")
+ * @param {number} minutes - Time in minutes to display
+ */
+function showChartTooltip(e, day, label, minutes) {
+  const tt = document.getElementById('chartTooltip')
+  if (!tt) return
+  tt.textContent = ''
+  const strong = document.createElement('strong')
+  strong.textContent = day
+  const div = document.createElement('div')
+  div.textContent = label + ': ' + minutesLabel(minutes)
+  tt.appendChild(strong)
+  tt.appendChild(div)
+  tt.style.display = 'block'
+  const svg = e.target.ownerSVGElement
+  const svgRect = svg.getBoundingClientRect()
+  tt.style.left = (e.clientX - svgRect.left + 8) + 'px'
+  tt.style.top = (e.clientY - svgRect.top - 24) + 'px'
+}
+
+/**
+ * Hide the chart tooltip.
+ */
+function hideChartTooltip() {
+  const tt = document.getElementById('chartTooltip')
+  if (tt) tt.style.display = 'none'
+}
+
 function ProgressBar({ value, max, color, exceeded }) {
   const pct = max > 0 ? Math.min(100, (value / max) * 100) : 0
   const actualPct = max > 0 ? (value / max) * 100 : 0
@@ -81,27 +113,11 @@ function WeeklyChart({ days, chartData, appColorMap }) {
                     data-minutes={minutes}
                     className="bar-segment"
                     onMouseEnter={(e) => {
-                      const tt = document.getElementById('chartTooltip')
-                      if (!tt) return
                       const appName = e.target.getAttribute('data-app')
                       const mins = Number(e.target.getAttribute('data-minutes'))
-                      tt.textContent = ''
-                      const strong = document.createElement('strong')
-                      strong.textContent = day
-                      const div = document.createElement('div')
-                      div.textContent = appName + ': ' + minutesLabel(mins)
-                      tt.appendChild(strong)
-                      tt.appendChild(div)
-                      tt.style.display = 'block'
-                      const svg = e.target.ownerSVGElement
-                      const svgRect = svg.getBoundingClientRect()
-                      tt.style.left = (e.clientX - svgRect.left + 8) + 'px'
-                      tt.style.top = (e.clientY - svgRect.top - 24) + 'px'
+                      showChartTooltip(e, day, appName, mins)
                     }}
-                    onMouseLeave={() => {
-                      const tt = document.getElementById('chartTooltip')
-                      if (tt) tt.style.display = 'none'
-                    }}
+                    onMouseLeave={hideChartTooltip}
                   />
                 )
               })}
@@ -122,26 +138,8 @@ function WeeklyChart({ days, chartData, appColorMap }) {
                     height={remH} 
                     fill="#e2e8f0"
                     data-total={total}
-                    onMouseEnter={(e)=>{
-                      const tt = document.getElementById('chartTooltip')
-                      if (!tt) return
-                      tt.textContent=''
-                      const strong = document.createElement('strong')
-                      strong.textContent = day
-                      const div = document.createElement('div')
-                      div.textContent = 'Total: ' + minutesLabel(total)
-                      tt.appendChild(strong)
-                      tt.appendChild(div)
-                      tt.style.display='block'
-                      const svg = e.target.ownerSVGElement
-                      const svgRect = svg.getBoundingClientRect()
-                      tt.style.left = (e.clientX - svgRect.left + 8) + 'px'
-                      tt.style.top = (e.clientY - svgRect.top - 24) + 'px'
-                    }}
-                    onMouseLeave={()=>{ 
-                      const tt = document.getElementById('chartTooltip')
-                      if (tt) tt.style.display='none' 
-                    }}
+                    onMouseEnter={(e) => showChartTooltip(e, day, 'Total', total)}
+                    onMouseLeave={hideChartTooltip}
                   />
                 )
               })()}
@@ -158,23 +156,8 @@ function WeeklyChart({ days, chartData, appColorMap }) {
                     height={stripH}
                     fill="transparent"
                     data-total={total}
-                    onMouseEnter={(e)=>{
-                      const tt = document.getElementById('chartTooltip')
-                      if (!tt) return
-                      tt.textContent=''
-                      const strong = document.createElement('strong')
-                      strong.textContent = day
-                      const div = document.createElement('div')
-                      div.textContent = 'Total: ' + minutesLabel(total)
-                      tt.appendChild(strong)
-                      tt.appendChild(div)
-                      tt.style.display='block'
-                      const svg = e.target.ownerSVGElement
-                      const svgRect = svg.getBoundingClientRect()
-                      tt.style.left = (e.clientX - svgRect.left + 8) + 'px'
-                      tt.style.top = (e.clientY - svgRect.top - 24) + 'px'
-                    }}
-                    onMouseLeave={()=>{ const tt = document.getElementById('chartTooltip'); if (tt) tt.style.display='none' }}
+                    onMouseEnter={(e) => showChartTooltip(e, day, 'Total', total)}
+                    onMouseLeave={hideChartTooltip}
                   />
                 )
               })()}
