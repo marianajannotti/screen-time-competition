@@ -63,7 +63,7 @@ export default function AddScreenTime() {
     }
   }
 
-  // Duplicate detection removed - backend handles validation
+  // Note: Backend automatically updates existing entries for the same app/date
 
   if (!show) return null
 

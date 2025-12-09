@@ -96,31 +96,48 @@ class ScreenTimeService:
 
     @staticmethod
     def create_entry(user_id: int, data: Dict) -> ScreenTimeLog:
-        """Create a new screen time entry.
+        """Create or update a screen time entry.
+
+        If an entry already exists for the same user, app, and date,
+        it will be updated with the new time. Otherwise, a new entry
+        is created.
 
         Args:
             user_id (int): ID of the user creating the entry.
             data (dict): Raw data from the request.
 
         Returns:
-            ScreenTimeLog: The created log entry.
+            ScreenTimeLog: The created or updated log entry.
 
         Raises:
             ValidationError: If data is invalid.
         """
-        app_name, total_minutes, entry_date = ScreenTimeService._validate_payload(data)
+        validated = ScreenTimeService._validate_payload(data)
+        app_name, total_minutes, entry_date = validated
 
-        new_log = ScreenTimeLog(
+        # Check for existing entry with same user_id, app_name, and date
+        existing_log = ScreenTimeLog.query.filter_by(
             user_id=user_id,
             app_name=app_name,
-            date=entry_date,
-            screen_time_minutes=total_minutes,
-        )
+            date=entry_date
+        ).first()
 
-        db.session.add(new_log)
-        db.session.commit()
-
-        return new_log
+        if existing_log:
+            # Update existing entry
+            existing_log.screen_time_minutes = total_minutes
+            db.session.commit()
+            return existing_log
+        else:
+            # Create new entry
+            new_log = ScreenTimeLog(
+                user_id=user_id,
+                app_name=app_name,
+                date=entry_date,
+                screen_time_minutes=total_minutes,
+            )
+            db.session.add(new_log)
+            db.session.commit()
+            return new_log
 
     @staticmethod
     def get_entries(
@@ -148,7 +165,9 @@ class ScreenTimeService:
             ValidationError: If date strings are invalid.
         """
         date_filter = ScreenTimeService._parse_date(date_str, "date")
-        start_date = ScreenTimeService._parse_date(start_date_str, "start_date")
+        start_date = ScreenTimeService._parse_date(
+            start_date_str, "start_date"
+        )
         end_date = ScreenTimeService._parse_date(end_date_str, "end_date")
 
         query = ScreenTimeLog.query.filter_by(user_id=user_id)
