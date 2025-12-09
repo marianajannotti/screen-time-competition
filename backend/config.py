@@ -23,14 +23,21 @@ class Config:
         "http://localhost:5174",
     ]
 
+    # Flask-Mail configuration for Gmail SMTP
+    MAIL_SERVER = "smtp.gmail.com"
+    MAIL_PORT = 587
+    MAIL_USE_TLS = True
+    MAIL_USE_SSL = False
+    MAIL_USERNAME = os.environ.get("MAIL_USERNAME")
+    MAIL_PASSWORD = os.environ.get("MAIL_PASSWORD")
+    MAIL_DEFAULT_SENDER = os.environ.get("MAIL_USERNAME")  # Use same email as sender
+
 
 class DevelopmentConfig(Config):
     """Settings while you're coding"""
 
     DEBUG = True  # Show helpful error pages
-    SQLALCHEMY_DATABASE_URI = (
-        os.environ.get("DATABASE_URL") or "sqlite:///app.db"
-    )
+    SQLALCHEMY_DATABASE_URI = os.environ.get("DATABASE_URL") or "sqlite:///app.db"
 
 
 class TestingConfig(Config):
@@ -44,9 +51,7 @@ class ProductionConfig(Config):
     """Settings for live app (when you deploy)"""
 
     DEBUG = False  # Don't show errors to users
-    SQLALCHEMY_DATABASE_URI = (
-        os.environ.get("DATABASE_URL") or "sqlite:///app_prod.db"
-    )
+    SQLALCHEMY_DATABASE_URI = os.environ.get("DATABASE_URL") or "sqlite:///app_prod.db"
 
 
 # Easy way to pick which config to use

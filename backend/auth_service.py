@@ -3,6 +3,8 @@ Authentication Service Layer
 Handles all authentication business logic separate from HTTP routes
 """
 
+import secrets
+from datetime import datetime, timedelta
 from werkzeug.security import generate_password_hash, check_password_hash
 from .database import db
 from .models import User
@@ -31,6 +33,8 @@ class AuthService:
         """
         if not username or not username.strip():
             return False, "Username is required"
+
+        username_clean = username.strip()
         
         if not email or not email.strip():
             return False, "Email is required"
@@ -39,8 +43,11 @@ class AuthService:
             return False, "Password is required"
         
         # Additional validation
-        if len(username.strip()) < 3:
+        if len(username_clean) < 3:
             return False, "Username must be at least 3 characters"
+
+        if "@" in username_clean:
+            return False, "Username cannot contain the '@' character"
         
         if len(password) < 6:
             return False, "Password must be at least 6 characters"
@@ -110,31 +117,31 @@ class AuthService:
         return new_user
 
     @staticmethod
-    def authenticate_user(username, password):
-        """Authenticate a user with username and password.
-        
+    def authenticate_user(identifier, password):
+        """Authenticate a user with username or email plus password.
+
         Args:
-            username (str): Username to authenticate
-            password (str): Plain text password to verify
-            
+            identifier (str): Username or email provided by the client.
+            password (str): Plain text password to verify.
+
         Returns:
             tuple: (User or None, str or None)
-                   Returns (User, None) if authentication successful
-                   Returns (None, error_message) if authentication failed
+                Returns (User, None) if authentication succeeds.
+                Returns (None, error_message) if authentication fails.
         """
-        if not username or not password:
-            return None, "Username and password are required"
-        
-        # Find user
-        user = User.query.filter_by(username=username.strip()).first()
-        
-        if not user:
-            return None, "Invalid username or password"
-        
-        # Verify password
-        if not check_password_hash(user.password_hash, password):
-            return None, "Invalid username or password"
-        
+
+        if not identifier or not password:
+            return None, "Username/email and password are required"
+
+        identifier = identifier.strip()
+        if "@" in identifier:
+            user = User.query.filter_by(email=identifier.lower()).first()
+        else:
+            user = User.query.filter_by(username=identifier).first()
+
+        if not user or not check_password_hash(user.password_hash, password):
+            return None, "Invalid username/email or password"
+
         return user, None
 
     @staticmethod
@@ -172,3 +179,99 @@ class AuthService:
             User or None: The User object if found, None otherwise
         """
         return User.query.filter_by(email=email.strip().lower()).first()
+
+    @staticmethod
+    def generate_reset_token(email):
+        """Generate a password reset token for a user.
+        
+        Args:
+            email (str): User's email address
+            
+        Returns:
+            tuple: (str or None, str or None) - (reset_token, error_message)
+                   Returns (token, None) if successful
+                   Returns (None, error_message) if user not found
+        """
+        user = AuthService.get_user_by_email(email)
+        
+        if not user:
+            # Don't reveal if email exists (security best practice)
+            return None, None
+        
+        # Generate secure random token
+        reset_token = secrets.token_urlsafe(32)
+        
+        # Set token expiry to 30 minutes from now
+        expiry = datetime.utcnow() + timedelta(minutes=30)
+        
+        # Save token to database
+        user.reset_token = reset_token
+        user.reset_token_expiry = expiry
+        db.session.commit()
+        
+        return reset_token, None
+
+    @staticmethod
+    def validate_reset_token(token):
+        """Validate a password reset token.
+        
+        Args:
+            token (str): Reset token to validate
+            
+        Returns:
+            tuple: (User or None, str or None) - (user, error_message)
+                   Returns (User, None) if token is valid
+                   Returns (None, error_message) if token is invalid/expired
+        """
+        if not token:
+            return None, "Reset token is required"
+        
+        # Find user with this token
+        user = User.query.filter_by(reset_token=token).first()
+        
+        if not user:
+            return None, "Invalid or expired reset token"
+        
+        # Check if token has expired
+        if user.reset_token_expiry < datetime.utcnow():
+            # Clear expired token
+            user.reset_token = None
+            user.reset_token_expiry = None
+            db.session.commit()
+            return None, "Reset token has expired"
+        
+        return user, None
+
+    @staticmethod
+    def reset_password(token, new_password):
+        """Reset user's password using a valid token.
+        
+        Args:
+            token (str): Valid reset token
+            new_password (str): New password to set
+            
+        Returns:
+            tuple: (bool, str or None) - (success, error_message)
+                   Returns (True, None) if successful
+                   Returns (False, error_message) if failed
+        """
+        # Validate token
+        user, error = AuthService.validate_reset_token(token)
+        
+        if error:
+            return False, error
+        
+        # Validate new password
+        if not new_password or len(new_password) < 6:
+            return False, "Password must be at least 6 characters"
+        
+        # Hash and update password
+        user.password_hash = generate_password_hash(new_password)
+        
+        # Clear reset token (single-use)
+        user.reset_token = None
+        user.reset_token_expiry = None
+        
+        db.session.commit()
+        
+        return True, None
