@@ -122,6 +122,24 @@ class ScreenTimeService:
             date=entry_date
         ).first()
 
+        # Validate total screen time consistency
+        if app_name == "Total":
+            # Get sum of all individual app times for this date
+            app_logs = ScreenTimeLog.query.filter_by(
+                user_id=user_id,
+                date=entry_date
+            ).filter(ScreenTimeLog.app_name != "Total").all()
+            
+            sum_of_apps = sum(log.screen_time_minutes for log in app_logs)
+            
+            if total_minutes < sum_of_apps:
+                raise ValidationError(
+                    f"Total screen time ({total_minutes // 60}h "
+                    f"{total_minutes % 60}m) cannot be less than the sum "
+                    f"of individual app times ({sum_of_apps // 60}h "
+                    f"{sum_of_apps % 60}m)."
+                )
+
         if existing_log:
             # Update existing entry
             existing_log.screen_time_minutes = total_minutes
