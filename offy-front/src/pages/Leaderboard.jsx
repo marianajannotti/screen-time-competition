@@ -104,7 +104,7 @@ export default function Leaderboard(){
                   <div className="metric">{p? (p._avg!==undefined ? minutesLabel(p._avg) : '—') : '—'}</div>
                   {pos==='first' && (
                     <div className="crown" aria-hidden="true">
-                      <img src={crownIcon} alt="Crown" style={{ width: '32px', height: '32px' }} />
+                      <img src={crownIcon} alt="Crown" style={{ width: '100px', height: '100px' }} />
                     </div>
                   )}
                 </div>
