@@ -1,6 +1,10 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { badgesApi } from '../api/badgesApi'
+import lockIcon from '../assets/badges/lock-icon.png'
+import trophyIcon from '../assets/badges/trophy-icon.png'
+import streakIcon from '../assets/badges/streak-icon.png'
+import friendsIcon from '../assets/badges/friends-icon.png'
 
 // Temporary mocked stats - moved outside component
 const MOCK_STATS = {
@@ -17,12 +21,6 @@ const BADGE_ICONS = {
   leaderboard: '🏆',
   prestige: '⭐',
 }
-
-// Import lock icon and stat icons
-import lockIcon from '../assets/badges/lock-icon.png'
-import trophyIcon from '../assets/badges/trophy-icon.png'
-import streakIcon from '../assets/badges/streak-icon.png'
-import friendsIcon from '../assets/badges/friends-icon.png'
 
 // Helper function to get badge icon path
 function getBadgeIconPath(badgeName) {
@@ -156,21 +154,21 @@ export default function Profile() {
         <div className="profile-right">
           <div className="profile-stat">
             <div className="icon">
-              <img src={trophyIcon} alt="Trophy" style={{ width: '25%', height: '25%', objectFit: 'contain' }} />
+              <img src={trophyIcon} alt="Trophy" style={{ width: '70px', height: '70px', objectFit: 'contain' }} />
             </div>
             <div className="value">#{MOCK_STATS.rank}</div>
             <div className="label">Leaderboard</div>
           </div>
           <div className="profile-stat">
             <div className="icon">
-              <img src={streakIcon} alt="Streak" style={{ width: '25%', height: '25%', objectFit: 'contain' }} />
+              <img src={streakIcon} alt="Streak" style={{ width: '70px', height: '70px', objectFit: 'contain' }} />
             </div>
             <div className="value">{MOCK_STATS.streakDays}</div>
             <div className="label">Day Streak</div>
           </div>
           <div className="profile-stat">
             <div className="icon">
-              <img src={friendsIcon} alt="Friends" style={{ width: '25%', height: '25%', objectFit: 'contain' }} />
+              <img src={friendsIcon} alt="Friends" style={{ width: '70px', height: '70px', objectFit: 'contain' }} />
             </div>
             <div className="value">{MOCK_STATS.friends}</div>
             <div className="label">Friends</div>
@@ -198,7 +196,9 @@ export default function Profile() {
         <div className="badges-grid">
           {unlockedBadges
             .slice(0, showAllUnlocked ? unlockedBadges.length : 6)
-            .map((b) => (
+            .map((b) => {
+              const iconPath = getBadgeIconPath(b.name)
+              return (
               <div
                 key={b.name}
                 className="badge-card owned"
@@ -214,9 +214,9 @@ export default function Profile() {
                 aria-label={`View ${b.name} details`}
               >
                 <div className="badge-icon">
-                  {getBadgeIconPath(b.name) ? (
+                  {iconPath ? (
                     <img 
-                      src={getBadgeIconPath(b.name)} 
+                      src={iconPath} 
                       alt={b.name}
                       style={{ width: '100%', height: '100%', objectFit: 'contain' }}
                     />
@@ -229,7 +229,7 @@ export default function Profile() {
                   <div className="badge-date muted">{formatEarnedDate(earnedBadgeMap.get(b.name))}</div>
                 </div>
               </div>
-            ))}
+            )})}
         </div>
         {unlockedBadges.length > 6 && (
           <div className="see-more-row">

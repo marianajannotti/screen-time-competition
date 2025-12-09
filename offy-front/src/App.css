@@ -239,7 +239,7 @@ pre{max-width:100%;overflow:auto;white-space:pre-wrap;word-wrap:break-word}
 .badges-section{margin-top:22px}
 .badges-title{color:#6b21a8;margin:0 0 12px 6px}
 .badges-subtitle{margin:0;color:#333}
-.badges-grid{display:grid;grid-template-columns:repeat(5, 1fr);gap:16px}
+.badges-grid{display:grid;grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));gap:16px}
 .badge-card{display:flex;align-items:center;gap:12px;padding:16px;border-radius:14px;border:1px dashed #e2e8f0;background:linear-gradient(180deg,#fff,#fbfbff);cursor:pointer}
 .badge-card.owned{border:1px solid rgba(15,23,42,0.06);box-shadow:0 12px 26px rgba(56,47,84,0.08);background:linear-gradient(180deg,#fff,#fdf7f3)}
 .badge-card.locked{opacity:0.75}
