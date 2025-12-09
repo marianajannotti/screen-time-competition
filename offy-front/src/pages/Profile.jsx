@@ -9,13 +9,36 @@ const MOCK_STATS = {
   friends: 10,
 }
 
-// Badge icons by type for visual differentiation
+// Badge icons by type for visual differentiation (fallback)
 const BADGE_ICONS = {
   streak: '🔥',
   reduction: '📉',
   social: '👥',
   leaderboard: '🏆',
   prestige: '⭐',
+}
+
+// Import lock icon and stat icons
+import lockIcon from '../assets/badges/lock-icon.png'
+import trophyIcon from '../assets/badges/trophy-icon.png'
+import streakIcon from '../assets/badges/streak-icon.png'
+import friendsIcon from '../assets/badges/friends-icon.png'
+
+// Helper function to get badge icon path
+function getBadgeIconPath(badgeName) {
+  // Convert badge name to kebab-case filename
+  const fileName = badgeName
+    .toLowerCase()
+    .replace(/\s+/g, '-')
+    .replace(/[^a-z0-9-]/g, '')
+  
+  try {
+    // Dynamically import the badge icon
+    return new URL(`../assets/badges/${fileName}-icon.png`, import.meta.url).href
+  } catch {
+    // Return null if image doesn't exist
+    return null
+  }
 }
 
 export default function Profile() {
@@ -132,19 +155,25 @@ export default function Profile() {
         </div>
         <div className="profile-right">
           <div className="profile-stat">
-            <div className="icon">🏆</div>
+            <div className="icon">
+              <img src={trophyIcon} alt="Trophy" style={{ width: '25%', height: '25%', objectFit: 'contain' }} />
+            </div>
             <div className="value">#{MOCK_STATS.rank}</div>
             <div className="label">Leaderboard</div>
           </div>
           <div className="profile-stat">
-            <div className="icon">🔥</div>
+            <div className="icon">
+              <img src={streakIcon} alt="Streak" style={{ width: '25%', height: '25%', objectFit: 'contain' }} />
+            </div>
             <div className="value">{MOCK_STATS.streakDays}</div>
-            <div className="label">day streak</div>
+            <div className="label">Day Streak</div>
           </div>
           <div className="profile-stat">
-            <div className="icon">👥</div>
+            <div className="icon">
+              <img src={friendsIcon} alt="Friends" style={{ width: '25%', height: '25%', objectFit: 'contain' }} />
+            </div>
             <div className="value">{MOCK_STATS.friends}</div>
-            <div className="label">friends</div>
+            <div className="label">Friends</div>
           </div>
         </div>
       </section>
@@ -184,7 +213,17 @@ export default function Profile() {
                 }}
                 aria-label={`View ${b.name} details`}
               >
-                <div className="badge-icon">{BADGE_ICONS[b.type] || '🔥'}</div>
+                <div className="badge-icon">
+                  {getBadgeIconPath(b.name) ? (
+                    <img 
+                      src={getBadgeIconPath(b.name)} 
+                      alt={b.name}
+                      style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                    />
+                  ) : (
+                    BADGE_ICONS[b.type] || '🔥'
+                  )}
+                </div>
                 <div className="badge-info">
                   <div className="badge-name">{b.name}</div>
                   <div className="badge-date muted">{formatEarnedDate(earnedBadgeMap.get(b.name))}</div>
@@ -222,7 +261,13 @@ export default function Profile() {
                 }}
                 aria-label={`View ${b.name} details`}
               >
-                <div className="badge-icon locked-icon">🔒</div>
+                <div className="badge-icon locked-icon">
+                  <img 
+                    src={lockIcon} 
+                    alt="Locked"
+                    style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                  />
+                </div>
                 <div className="badge-info">
                   <div className="badge-name">{b.name}</div>
                   <div className="badge-date muted"></div>
