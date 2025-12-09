@@ -119,7 +119,7 @@ export default function AddScreenTime() {
 
           {message && (
             <div style={{
-              color: message.includes('Failed') || message.includes('cannot') ? '#c33' : '#0b6',
+              color: message.includes('Failed') || message.includes('cannot') || message.includes('must be greater') ? '#c33' : '#0b6',
               marginTop: 8
             }}>
               {message}
