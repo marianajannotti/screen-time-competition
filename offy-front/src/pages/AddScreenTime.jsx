@@ -36,7 +36,7 @@ export default function AddScreenTime() {
     const totalMinutes = (Number(hours) || 0) * 60 + (Number(minutes) || 0)
     
     if (totalMinutes <= 0) {
-      setMessage('Please enter a valid time')
+      setMessage('Screen time must be greater than 0 minutes')
       return
     }
     
