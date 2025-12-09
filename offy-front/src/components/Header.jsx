@@ -1,7 +1,6 @@
 import React from 'react'
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
-import logoSvg from '/logo.svg?url'
 
 export default function Header() {
   const { user, signOut } = useAuth()
@@ -27,7 +26,7 @@ export default function Header() {
 
   const Brand = (
     <div className="brand" onClick={() => nav('/dashboard')} style={{ cursor: 'pointer' }}>
-      <img src={logoSvg} alt="Offy" style={{ width: '40px', height: '40px' }} />
+      <img src="/logo.svg" alt="Offy" style={{ width: '32px', height: '32px' }} />
       <div>Offy</div>
     </div>
   )
