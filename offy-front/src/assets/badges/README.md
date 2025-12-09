@@ -39,7 +39,7 @@ This directory contains custom badge icons for the screen time competition app.
 - `champion-icon.png` - Rank 1
 - `hall-of-fame-icon.png` - Rank 1 for 7 days
 
-### Prestige Badges (2)
+### Prestige Badges (3)
 - `zen-master-icon.png` - 50 total badges
 - `elite-status-icon.png` - 100 total badges
 - `ultimate-dedication-icon.png` - 200 total badges
