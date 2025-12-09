@@ -1,5 +1,6 @@
-import React, { useMemo, useState } from 'react'
+import React, { useMemo, useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
+import { getMonthlyLogs } from '../api/mockApi'
 
 // Helpers
 function minutesLabel(mins) {
@@ -166,18 +167,30 @@ export default function Dashboard() {
   })
   const [showDailyModal, setShowDailyModal] = useState(false)
   const [showWeeklyModal, setShowWeeklyModal] = useState(false)
-  // Fetch logs (mock) and compute aggregates; replace with real API later.
-  const logs = useMemo(() => {
-    if (!user) return []
-    const raw = localStorage.getItem(`offy_logs_${user.user_id}`)
-    const arr = raw ? JSON.parse(raw) : []
-    // last 7 days filter
-    const today = new Date()
-    const cutoff = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 6)
-    return arr.filter(l => {
-      const d = new Date(l.date)
-      return d >= cutoff && d <= today
-    })
+  // Fetch logs (mock) via mockApi helpers and compute aggregates
+  const [logs, setLogs] = useState([])
+  useEffect(() => {
+    let mounted = true
+    if (!user) { setLogs([]); return }
+    ;(async () => {
+      try {
+        const res = await getMonthlyLogs(user.user_id)
+        if (!mounted) return
+        const arr = Array.isArray(res.logs) ? res.logs : []
+        // last 7 days filter
+        const today = new Date()
+        const cutoff = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 6)
+        const recent = arr.filter((l) => {
+          const d = new Date(l.date)
+          return d >= cutoff && d <= today
+        })
+        setLogs(recent)
+      } catch (err) {
+        if (!mounted) return
+        setLogs([])
+      }
+    })()
+    return () => { mounted = false }
   }, [user])
 
   const todayApps = useMemo(() => {

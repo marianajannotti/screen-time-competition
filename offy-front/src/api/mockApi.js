@@ -205,6 +205,22 @@ export async function getScreenTimeLogs(user_id) {
   return { logs: db.screenTimeLogs.filter((l) => l.user_id === user_id) }
 }
 
+// Monthly per-user logs used by leaderboard and monthly stats utilities.
+export async function getMonthlyLogs(user_id) {
+  await delay(100)
+  const key = `offy_logs_${user_id}`
+  const raw = localStorage.getItem(key)
+  const logs = raw ? JSON.parse(raw) : []
+  return { logs }
+}
+
+export async function saveMonthlyLogs(user_id, logs) {
+  await delay(100)
+  const key = `offy_logs_${user_id}`
+  localStorage.setItem(key, JSON.stringify(logs || []))
+  return { success: true }
+}
+
 export async function getLeaderboard() {
   await delay()
   const db = load()
@@ -281,6 +297,8 @@ export default {
   updateProfile,
   addScreenTime,
   getScreenTimeLogs,
+  getMonthlyLogs,
+  saveMonthlyLogs,
   getLeaderboard,
   getFriends,
   getFriendIds,
