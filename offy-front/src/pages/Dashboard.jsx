@@ -105,10 +105,45 @@ function WeeklyChart({ days, chartData, appColorMap }) {
                   />
                 )
               })}
+              {/* 
+                Gray remainder segment: Represents unassigned screen time.
+                This is the difference between total screen time and the sum of individual app times.
+                For example: 3h total with 1h Instagram logged = 2h gray remainder (unassigned).
+                Hovering shows the total screen time for the day.
+              */}
               {remainder > 0 && (()=>{
                 const remH = (remainder / max) * (height - 30)
                 const remY = yBase - yOffset - remH
-                return <rect x={x + 14} y={remY} width={barW} height={remH} fill="#e2e8f0" />
+                return (
+                  <rect 
+                    x={x + 14} 
+                    y={remY} 
+                    width={barW} 
+                    height={remH} 
+                    fill="#e2e8f0"
+                    data-total={total}
+                    onMouseEnter={(e)=>{
+                      const tt = document.getElementById('chartTooltip')
+                      if (!tt) return
+                      tt.textContent=''
+                      const strong = document.createElement('strong')
+                      strong.textContent = day
+                      const div = document.createElement('div')
+                      div.textContent = 'Total: ' + minutesLabel(total)
+                      tt.appendChild(strong)
+                      tt.appendChild(div)
+                      tt.style.display='block'
+                      const svg = e.target.ownerSVGElement
+                      const svgRect = svg.getBoundingClientRect()
+                      tt.style.left = (e.clientX - svgRect.left + 8) + 'px'
+                      tt.style.top = (e.clientY - svgRect.top - 24) + 'px'
+                    }}
+                    onMouseLeave={()=>{ 
+                      const tt = document.getElementById('chartTooltip')
+                      if (tt) tt.style.display='none' 
+                    }}
+                  />
+                )
               })()}
               {/* Small transparent strip at top for total hover without blocking app segments */}
               {total > 0 && (()=>{
@@ -171,7 +206,10 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
-  // Fetch logs from backend API
+  /**
+   * Fetch screen time logs from backend API on component mount or when user changes.
+   * Retrieves the last 30 days of data to populate the dashboard and weekly chart.
+   */
   useEffect(() => {
     if (!user) {
       setLogs([])
@@ -184,23 +222,26 @@ export default function Dashboard() {
         setLoading(true)
         setError(null)
         
-        // Get logs for the last 30 days to have enough data
+        // Get logs for the last 30 days to have enough data for charts and metrics
         const endDate = new Date().toISOString().slice(0, 10)
         const startDate = new Date()
         startDate.setDate(startDate.getDate() - 30)
         const startDateStr = startDate.toISOString().slice(0, 10)
         
+        // Fetch from backend API with date range filter
         const response = await getScreenTimeEntries({
           start_date: startDateStr,
           end_date: endDate,
           limit: 100
         })
         
-        // Transform backend format to match the expected format
-        // Backend: { app_name, date, screen_time_minutes }
-        // Expected: { app, date, minutes }
+        /**
+         * Transform backend response format to match dashboard's expected format.
+         * Backend returns: { app_name, date, screen_time_minutes }
+         * Dashboard expects: { app, date, minutes }
+         */
         const transformedLogs = response.logs.map(log => ({
-          app: log.app_name || '__TOTAL__',
+          app: (log.app_name === 'Total' || !log.app_name) ? '__TOTAL__' : log.app_name,
           date: log.date,
           minutes: log.screen_time_minutes
         }))
@@ -278,6 +319,7 @@ export default function Dashboard() {
   })
   const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']
 
+  // Loading state: Show spinner while fetching data from backend API
   if (loading) {
     return (
       <main className="dashboard-main">
@@ -291,6 +333,7 @@ export default function Dashboard() {
     )
   }
 
+  // Error state: Show error message with retry button if API call fails
   if (error) {
     return (
       <main className="dashboard-main">
