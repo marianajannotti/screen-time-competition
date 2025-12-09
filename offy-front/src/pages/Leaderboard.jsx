@@ -7,6 +7,7 @@ import {
   seedMonthlyMockData,
   resetAllMockData,
 } from '../api/mockApi'
+import crownIcon from '../assets/badges/crown-icon.png'
 
 export default function Leaderboard(){
   const { user } = useAuth()
@@ -101,7 +102,11 @@ export default function Leaderboard(){
                   <div className="avatar tiny"><span className="initials">{p?.username?.[0]?.toUpperCase() || (p ? '?' : pos[0].toUpperCase())}</span></div>
                   <div className="name">{p? p.username : pos.charAt(0).toUpperCase()+pos.slice(1)}</div>
                   <div className="metric">{p? (p._avg!==undefined ? minutesLabel(p._avg) : '—') : '—'}</div>
-                  {pos==='first' && <div className="crown" aria-hidden="true">👑</div>}
+                  {pos==='first' && (
+                    <div className="crown" aria-hidden="true">
+                      <img src={crownIcon} alt="Crown" style={{ width: '32px', height: '32px' }} />
+                    </div>
+                  )}
                 </div>
               </div>
             )

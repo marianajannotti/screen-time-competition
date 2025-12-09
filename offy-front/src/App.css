@@ -123,6 +123,15 @@ button{padding:8px 12px;border-radius:6px}
 .modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,0.45);display:flex;align-items:center;justify-content:center;z-index:40}
 .modal{background:var(--card);width:760px;border-radius:10px;padding:22px;box-shadow:0 20px 60px rgba(2,6,23,0.2)}
 
+/* Badge modal enhancements */
+.badge-modal{max-width:500px;text-align:center}
+.badge-modal-icon{display:flex;justify-content:center;margin-bottom:16px}
+.badge-modal .modal-title{font-size:1.5rem;margin-bottom:12px}
+.badge-modal .modal-desc{font-size:1rem;margin-bottom:16px;line-height:1.5}
+.badge-earned-date{display:inline-flex;align-items:center;gap:8px;background:linear-gradient(135deg,#10b981,#059669);color:white;padding:8px 16px;border-radius:20px;margin-bottom:20px;font-size:0.9rem;font-weight:500}
+.badge-earned-date .earned-label{opacity:0.9}
+.badge-earned-date .earned-value{font-weight:600}
+
 /* Leaderboard */
 .leaderboard-hero{display:flex;align-items:flex-end;justify-content:center;gap:24px;margin-bottom:24px}
 .podium{background:linear-gradient(180deg,#6b21a8,#5b21b0);color:#fff;padding:22px;border-radius:12px;min-width:160px;text-align:center}
