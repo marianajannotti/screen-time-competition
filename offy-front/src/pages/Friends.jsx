@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { friendshipApi } from '../api/friendshipApi'
+import { minutesLabel, computeMonthlyStatsForUser } from '../api/mockApi'
 import { useAuth } from '../contexts/AuthContext'
 
 export default function Friends() {
@@ -165,6 +166,11 @@ function FriendsColumn({ title, emptyText, items, renderActions }) {
 function FriendRow({ item, renderActions }) {
   const counterpart = item.counterpart || {}
   const initials = (counterpart.username || '?').slice(0, 2).toUpperCase()
+  const monthly = useMemo(() => {
+    const stats = computeMonthlyStatsForUser(counterpart.id || counterpart.user_id)
+    return stats
+  }, [counterpart.id, counterpart.user_id])
+  const avgLabel = monthly && monthly.avgPerDay !== undefined ? minutesLabel(monthly.avgPerDay) : '—'
 
   return (
     <div className="friend-row">
@@ -173,7 +179,7 @@ function FriendRow({ item, renderActions }) {
         <div>
           <div className="friend-name">{counterpart.username || 'Unknown user'}</div>
           <div className="muted small">
-            {counterpart.email || 'No email'} · Streak {counterpart.streak_count ?? '—'} · Points {counterpart.total_points ?? '—'}
+            {counterpart.email || 'No email'} · Streak {counterpart.streak_count ?? '—'} · Avg {avgLabel}
           </div>
         </div>
       </div>
