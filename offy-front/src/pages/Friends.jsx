@@ -4,7 +4,7 @@ import { minutesLabel, computeMonthlyStatsForUser } from '../api/mockApi'
 import { useAuth } from '../contexts/AuthContext'
 
 export default function Friends() {
-  const { user } = useAuth()
+  useAuth()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [username, setUsername] = useState('')
