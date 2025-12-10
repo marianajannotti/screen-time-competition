@@ -6,6 +6,26 @@ const JSON_HEADERS = {
   Accept: 'application/json',
 }
 
+function parseJsonSafe(res) {
+  const ct = res.headers.get('content-type') || ''
+  if (!ct.includes('application/json')) {
+    return null
+  }
+  return res.json()
+}
+
+function buildError(res, fallback) {
+  return async () => {
+    const data = await parseJsonSafe(res)
+    if (data && data.error) return data.error
+    const text = !data ? await res.text().catch(() => '') : ''
+    if (text.toLowerCase().startsWith('<!doctype')) {
+      return 'Not authenticated. Please sign in again.'
+    }
+    return fallback
+  }
+}
+
 export const friendshipApi = {
   list: async () => {
     const res = await fetch(BASE_URL, {
@@ -13,8 +33,8 @@ export const friendshipApi = {
       headers: { Accept: 'application/json' },
       credentials: 'include',
     })
-    const data = await res.json()
-    if (!res.ok) throw new Error(data.error || 'Failed to load friendships')
+    const data = await parseJsonSafe(res)
+    if (!res.ok) throw new Error((data && data.error) || (await buildError(res, 'Failed to load friendships')()))
     return data
   },
 
@@ -25,8 +45,8 @@ export const friendshipApi = {
       credentials: 'include',
       body: JSON.stringify({ username }),
     })
-    const data = await res.json()
-    if (!res.ok) throw new Error(data.error || 'Failed to send request')
+    const data = await parseJsonSafe(res)
+    if (!res.ok) throw new Error((data && data.error) || (await buildError(res, 'Failed to send request')()))
     return data
   },
 
@@ -36,8 +56,8 @@ export const friendshipApi = {
       headers: { Accept: 'application/json' },
       credentials: 'include',
     })
-    const data = await res.json()
-    if (!res.ok) throw new Error(data.error || 'Failed to accept request')
+    const data = await parseJsonSafe(res)
+    if (!res.ok) throw new Error((data && data.error) || (await buildError(res, 'Failed to accept request')()))
     return data
   },
 
@@ -47,8 +67,8 @@ export const friendshipApi = {
       headers: { Accept: 'application/json' },
       credentials: 'include',
     })
-    const data = await res.json()
-    if (!res.ok) throw new Error(data.error || 'Failed to reject request')
+    const data = await parseJsonSafe(res)
+    if (!res.ok) throw new Error((data && data.error) || (await buildError(res, 'Failed to reject request')()))
     return data
   },
 
@@ -59,13 +79,11 @@ export const friendshipApi = {
       credentials: 'include',
     })
     if (!res.ok) {
-      let data
-      try {
-        data = await res.json()
-      } catch {
-        data = {}
-      }
-      throw new Error(data.error || 'Failed to cancel request')
+      const data = await parseJsonSafe(res)
+      const msg =
+        (data && data.error) ||
+        (await buildError(res, 'Failed to cancel request')())
+      throw new Error(msg)
     }
     return { ok: true }
   },
