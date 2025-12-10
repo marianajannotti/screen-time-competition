@@ -87,12 +87,14 @@ def create_app(config_name: str | None = None) -> Flask:
     from .friendship import friendship_bp
     from .badges import badges_bp
     from .leaderboard import leaderboard_bp
+    from .challenges import challenges_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(screen_time_bp)
     app.register_blueprint(friendship_bp)
     app.register_blueprint(badges_bp)
     app.register_blueprint(leaderboard_bp)
+    app.register_blueprint(challenges_bp)
 
     # Create database tables
     with app.app_context():
