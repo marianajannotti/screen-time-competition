@@ -1,12 +1,15 @@
+// Base URL for friendship endpoints
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5001'
 const BASE_URL = `${API_BASE}/api/friendships`
 
+// Shared JSON headers for POST calls
 const JSON_HEADERS = {
   'Content-Type': 'application/json',
   Accept: 'application/json',
 }
 
 function parseJsonSafe(res) {
+  // Avoid throwing when the server returns HTML (e.g., redirect)
   const ct = res.headers.get('content-type') || ''
   if (!ct.includes('application/json')) {
     return null
@@ -15,6 +18,7 @@ function parseJsonSafe(res) {
 }
 
 function buildError(res, fallback) {
+  // Prefer API error messages; fall back to sensible defaults
   return async () => {
     const data = await parseJsonSafe(res)
     if (data && data.error) return data.error

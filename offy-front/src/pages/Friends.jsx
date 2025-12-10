@@ -10,12 +10,14 @@ export default function Friends() {
   const [submitting, setSubmitting] = useState(false)
   const [data, setData] = useState({ friends: [], incoming: [], outgoing: [] })
 
+  // Quick indicator to adjust empty-state copy
   const hasAny = useMemo(
     () =>
       (data.friends?.length || 0) + (data.incoming?.length || 0) + (data.outgoing?.length || 0) > 0,
     [data],
   )
 
+  // Fetch friendship lists from the backend
   async function load() {
     setLoading(true)
     setError(null)
@@ -33,6 +35,7 @@ export default function Friends() {
     load()
   }, [])
 
+  // Send a new request and refresh lists
   async function handleSend(e) {
     e.preventDefault()
     if (!username.trim()) return
