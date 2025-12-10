@@ -205,6 +205,22 @@ export async function getScreenTimeLogs(user_id) {
   return { logs: db.screenTimeLogs.filter((l) => l.user_id === user_id) }
 }
 
+// Monthly per-user logs used by leaderboard and monthly stats utilities.
+export async function getMonthlyLogs(user_id) {
+  await delay(100)
+  const key = `offy_logs_${user_id}`
+  const raw = localStorage.getItem(key)
+  const logs = raw ? JSON.parse(raw) : []
+  return { logs }
+}
+
+export async function saveMonthlyLogs(user_id, logs) {
+  await delay(100)
+  const key = `offy_logs_${user_id}`
+  localStorage.setItem(key, JSON.stringify(logs || []))
+  return { success: true }
+}
+
 export async function getLeaderboard() {
   await delay()
   const db = load()
@@ -218,6 +234,39 @@ export async function getFriends(user_id) {
   const db = load()
   // return all users except the current as mock
   return { friends: db.users.filter((u) => u.user_id !== user_id) }
+}
+
+// Friendships API
+export async function getFriendIds(user_id) {
+  await delay()
+  const db = load()
+  db.friendships = db.friendships || []
+  const ids = db.friendships.filter((f) => f.user_id === user_id).map((f) => f.friend_id)
+  return { friendIds: ids }
+}
+
+export async function addFriendship(user_id, friend_id) {
+  await delay()
+  if (!user_id || !friend_id) return Promise.reject({ message: 'Invalid arguments' })
+  if (user_id === friend_id) return Promise.reject({ message: "Can't add yourself" })
+  const db = load()
+  db.friendships = db.friendships || []
+  const exists = db.friendships.some((f) => f.user_id === user_id && f.friend_id === friend_id)
+  if (!exists) {
+    db.friendships.push({ user_id, friend_id })
+    save(db)
+  }
+  return { success: true }
+}
+
+export async function removeFriendship(user_id, friend_id) {
+  await delay()
+  if (!user_id || !friend_id) return Promise.reject({ message: 'Invalid arguments' })
+  if (user_id === friend_id) return Promise.reject({ message: "Can't remove yourself" })
+  const db = load()
+  db.friendships = (db.friendships || []).filter((f) => !(f.user_id === user_id && f.friend_id === friend_id))
+  save(db)
+  return { success: true }
 }
 
 // Expose a helper for tests or bootstrapping
@@ -248,8 +297,13 @@ export default {
   updateProfile,
   addScreenTime,
   getScreenTimeLogs,
+  getMonthlyLogs,
+  saveMonthlyLogs,
   getLeaderboard,
   getFriends,
+  getFriendIds,
+  addFriendship,
+  removeFriendship,
   _resetMockDb,
   resetAllMockData,
   // Leaderboard utilities
