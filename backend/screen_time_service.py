@@ -126,22 +126,21 @@ class ScreenTimeService:
             date=entry_date,
             screen_time_minutes=total_minutes,
         )
-
-
         db.session.add(new_log)
         db.session.commit()
 
         # --- Challenge stats update logic ---
         from .models import Challenge, ChallengeParticipant
-        today = entry_date
+        
         # Find all active challenges for this user
         active_challenges = Challenge.query.join(ChallengeParticipant).filter(
             ChallengeParticipant.user_id == user_id,
             Challenge.status == 'active',
-            Challenge.start_date <= today,
-            Challenge.end_date >= today,
+            Challenge.start_date <= entry_date,
+            Challenge.end_date >= entry_date,
             ((Challenge.target_app == app_name) | (Challenge.target_app == '__TOTAL__'))
         ).all()
+        
         for challenge in active_challenges:
             participant = ChallengeParticipant.query.filter_by(
                 challenge_id=challenge.id,
@@ -149,47 +148,50 @@ class ScreenTimeService:
             ).first()
             if not participant:
                 continue
-            # Aggregate all logs for this user/challenge/app/date
-            if challenge.target_app == '__TOTAL__':
-                logs_for_day = ScreenTimeLog.query.filter_by(
-                    user_id=user_id,
-                    date=today
-                ).all()
-            else:
-                logs_for_day = ScreenTimeLog.query.filter_by(
-                    user_id=user_id,
-                    app_name=challenge.target_app,
-                    date=today
-                ).all()
-            # Aggregate all logs for this challenge/app/user using SQL
-            log_query = ScreenTimeLog.query.filter_by(user_id=user_id)
+            
+            # Build base query for this user's logs
+            base_query = ScreenTimeLog.query.filter_by(user_id=user_id)
             if challenge.target_app != '__TOTAL__':
-                log_query = log_query.filter_by(app_name=challenge.target_app)
-            # Count unique days
-            days_logged = db.session.query(func.count(func.distinct(ScreenTimeLog.date))).filter(
-                ScreenTimeLog.user_id == user_id,
-                (ScreenTimeLog.app_name == challenge.target_app if challenge.target_app != '__TOTAL__' else True)
-            ).scalar()
-            # Sum total minutes
-            total_minutes = db.session.query(func.sum(ScreenTimeLog.screen_time_minutes)).filter(
-                ScreenTimeLog.user_id == user_id,
-                (ScreenTimeLog.app_name == challenge.target_app if challenge.target_app != '__TOTAL__' else True)
-            ).scalar() or 0
-            participant.days_logged = days_logged or 0
-            participant.total_screen_time_minutes = total_minutes
-            # Recalculate days_passed and days_failed for all days
-            # For each unique day, sum minutes and compare to target
-            day_totals = db.session.query(
-                ScreenTimeLog.date,
-                func.sum(ScreenTimeLog.screen_time_minutes)
+                base_query = base_query.filter_by(app_name=challenge.target_app)
+            
+            # Count unique days logged
+            days_logged = db.session.query(
+                func.count(func.distinct(ScreenTimeLog.date))
             ).filter(
                 ScreenTimeLog.user_id == user_id,
-                (ScreenTimeLog.app_name == challenge.target_app if challenge.target_app != '__TOTAL__' else True)
-            ).group_by(ScreenTimeLog.date).all()
-            days_passed = sum(1 for d, total in day_totals if total <= challenge.target_minutes)
+                ScreenTimeLog.app_name == challenge.target_app if challenge.target_app != '__TOTAL__' else True
+            ).scalar() or 0
+            
+            # Sum total minutes
+            total_minutes_query = db.session.query(
+                func.sum(ScreenTimeLog.screen_time_minutes)
+            ).filter(ScreenTimeLog.user_id == user_id)
+            if challenge.target_app != '__TOTAL__':
+                total_minutes_query = total_minutes_query.filter(
+                    ScreenTimeLog.app_name == challenge.target_app
+                )
+            total_minutes = total_minutes_query.scalar() or 0
+            
+            # Calculate days passed/failed by grouping by date
+            day_totals_query = db.session.query(
+                ScreenTimeLog.date,
+                func.sum(ScreenTimeLog.screen_time_minutes)
+            ).filter(ScreenTimeLog.user_id == user_id)
+            if challenge.target_app != '__TOTAL__':
+                day_totals_query = day_totals_query.filter(
+                    ScreenTimeLog.app_name == challenge.target_app
+                )
+            day_totals = day_totals_query.group_by(ScreenTimeLog.date).all()
+            
+            days_passed = sum(1 for _, total in day_totals if total <= challenge.target_minutes)
+            
+            # Update participant stats
+            participant.days_logged = days_logged
+            participant.total_screen_time_minutes = total_minutes
             participant.days_passed = days_passed
-            participant.days_failed = (days_logged or 0) - days_passed
-            db.session.commit()
+            participant.days_failed = days_logged - days_passed
+            
+        db.session.commit()
         try:
             from .badge_logic import BadgeLogic
         except ImportError as e:
