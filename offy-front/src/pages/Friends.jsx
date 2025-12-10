@@ -105,12 +105,14 @@ export default function Friends() {
                 <button
                   className="btn-primary"
                   onClick={() => handleAction(() => friendshipApi.accept(item.id))}
+                  aria-label={`Accept friend request from ${item.counterpart?.username || 'Unknown user'}`}
                 >
                   Accept
                 </button>
                 <button
                   className="btn-ghost"
                   onClick={() => handleAction(() => friendshipApi.reject(item.id))}
+                  aria-label={`Reject friend request from ${item.counterpart?.username || 'Unknown user'}`}
                 >
                   Reject
                 </button>
