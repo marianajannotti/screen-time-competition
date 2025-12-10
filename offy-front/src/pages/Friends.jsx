@@ -127,6 +127,7 @@ export default function Friends() {
                 <button
                   className="btn-ghost"
                   onClick={() => handleAction(() => friendshipApi.cancel(item.id))}
+                  aria-label={`Cancel friend request to ${item.counterpart?.username}`}
                 >
                   Cancel
                 </button>
