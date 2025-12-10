@@ -63,8 +63,8 @@ export default function Friends() {
     <main className="friends-page">
       <div className="page-header">
         <div>
-          <p className="eyebrow">Friends</p>
-          <h1>Stay accountable together</h1>
+          <p className="eyebrow">Stay accountable together</p>
+          <h1>FRIENDS</h1>
           <p className="muted">Send requests, accept invites, and keep your accountability circle close.</p>
         </div>
       </div>
