@@ -40,6 +40,7 @@ export default function Header() {
     <nav className="nav-links">
       <NavLink to="/dashboard" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>🏠 Home</NavLink>
       <NavLink to="/leaderboard" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>🏆 Leaderboard</NavLink>
+      <NavLink to="/friends" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>👥 Friends</NavLink>
       <button aria-label="Open profile" onClick={() => nav('/profile')} className={`header-avatar ${location.pathname.startsWith('/profile') ? 'active' : ''}`}>
         {initials}
       </button>
