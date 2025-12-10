@@ -82,13 +82,8 @@ export const friendshipApi = {
       headers: { Accept: 'application/json' },
       credentials: 'include',
     })
-    if (!res.ok) {
-      const data = await parseJsonSafe(res)
-      const msg =
-        (data && data.error) ||
-        (await buildError(res, 'Failed to cancel request')())
-      throw new Error(msg)
-    }
-    return { ok: true }
+    const data = await parseJsonSafe(res)
+    if (!res.ok) throw new Error((data && data.error) || (await buildError(res, 'Failed to cancel request')()))
+    return data
   },
 }
