@@ -195,6 +195,7 @@ class ScreenTimeService:
         try:
             from .badge_logic import BadgeLogic
         except ImportError as e:
+            # Badge logic module is missing; log and continue
             logger.error(f"Badge logic import error for user {user_id}: {e}")
         else:
             try:
@@ -202,6 +203,7 @@ class ScreenTimeService:
                 if awarded_badges:
                     logger.info(f"Awarded badges to user {user_id}: {awarded_badges}")
             except Exception as e:
+                # Don't fail the screen time entry if badge logic fails
                 logger.error(f"Badge logic error for user {user_id}: {e}")
 
         return new_log
