@@ -232,8 +232,25 @@ export async function getLeaderboard() {
 export async function getFriends(user_id) {
   await delay()
   const db = load()
-  // return all users except the current as mock
-  return { friends: db.users.filter((u) => u.user_id !== user_id) }
+  console.log(db)
+  db.friendships = db.friendships || []
+  // collect friend ids where user_id is owner or recipient (treat friendships as bidirectional for display)
+  const ids = new Set()
+  db.friendships.forEach((f) => {
+    console.log(f, f.user_id, f.friend_id, user_id)
+    if (f.user_id === user_id) ids.add(f.friend_id)
+    if (f.friend_id === user_id) ids.add(f.user_id)
+  })
+  // map ids to user objects
+  const friends = (db.users || []).filter((u) => ids.has(u.user_id))
+  return { friends }
+}
+
+export async function getAllUsers(user_id) {
+  await delay(60)
+  const db = load()
+  const users = (db.users || []).filter((u) => u.user_id !== user_id)
+  return { users }
 }
 
 // Friendships API
@@ -269,6 +286,62 @@ export async function removeFriendship(user_id, friend_id) {
   return { success: true }
 }
 
+// Challenges API
+export async function getChallenges(user_id) {
+  await delay(120)
+  const db = load()
+  db.challenges = db.challenges || []
+  // return challenges owned by user or where user is a member
+  const list = db.challenges.filter((c) => c.owner === user_id || (Array.isArray(c.members) && c.members.includes(user_id)))
+  return { challenges: list }
+}
+
+export async function addChallenge({ owner, name, criteria, members = [] }) {
+  await delay(120)
+  const db = load()
+  db.challenges = db.challenges || []
+  const challenge = {
+    challenge_id: genId('challenge'),
+    owner,
+    name,
+    criteria, // { app: '__TOTAL__' | 'YouTube'..., targetMinutes }
+    members: Array.isArray(members) ? members : [],
+    created_at: new Date().toISOString(),
+    active: true,
+  }
+  db.challenges.push(challenge)
+  save(db)
+  return { challenge }
+}
+
+export async function updateChallenge(challenge_id, patch) {
+  await delay(100)
+  const db = load()
+  db.challenges = db.challenges || []
+  const idx = db.challenges.findIndex((c) => c.challenge_id === challenge_id)
+  if (idx === -1) return Promise.reject({ message: 'Not found' })
+  db.challenges[idx] = { ...db.challenges[idx], ...patch }
+  save(db)
+  return { challenge: db.challenges[idx] }
+}
+
+// Return usage per app for a given date (reads monthly logs stored per-user)
+export async function getDailyUsage(user_id, date) {
+  await delay(80)
+  const key = `offy_logs_${user_id}`
+  const raw = localStorage.getItem(key)
+  const logs = raw ? JSON.parse(raw) : []
+  const day = date || new Date().toISOString().slice(0, 10)
+  const usage = (logs.filter((l) => l.date === day) || []).map((l) => ({ app: l.app, minutes: l.minutes }))
+  // if no explicit __TOTAL__ exists, compute total from other apps
+  const hasTotal = usage.some((u) => u.app === '__TOTAL__')
+  if (!hasTotal) {
+    const total = usage.reduce((acc, u) => acc + (u.minutes || 0), 0)
+    usage.push({ app: '__TOTAL__', minutes: total })
+  }
+  return { usage }
+}
+
 // Expose a helper for tests or bootstrapping
 export function _resetMockDb() {
   save(initial)
@@ -301,9 +374,15 @@ export default {
   saveMonthlyLogs,
   getLeaderboard,
   getFriends,
+  getAllUsers,
   getFriendIds,
   addFriendship,
   removeFriendship,
+  // Challenges API
+  getChallenges,
+  addChallenge,
+  updateChallenge,
+  getDailyUsage,
   _resetMockDb,
   resetAllMockData,
   // Leaderboard utilities

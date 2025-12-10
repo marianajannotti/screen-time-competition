@@ -12,6 +12,10 @@ import {
 
 export default function Leaderboard(){
   const { user } = useAuth()
+  // Normalize user id from different possible shapes
+  function getUserId(u) {
+    return u?.user_id ?? u?.id ?? u?.userId ?? u?.uid ?? null
+  }
   const [tab, setTab] = useState('friends') // 'friends' | 'global'
   const [globalUsers, setGlobalUsers] = useState([])
   const [loading, setLoading] = useState(true)
@@ -100,7 +104,8 @@ export default function Leaderboard(){
   const remainder = list.slice(3)
   const filteredAddable = useMemo(()=>{
     const q = search.trim().toLowerCase()
-    return rankedGlobal.filter(u=>u.user_id!==user?.user_id && !friendUserSet.has(u.user_id) && (!q || u.username.toLowerCase().includes(q)))
+    const uid = getUserId(user)
+    return rankedGlobal.filter(u=>u.user_id!==uid && !friendUserSet.has(u.user_id) && (!q || u.username.toLowerCase().includes(q)))
   }, [search, rankedGlobal, friendUserSet, user])
 
   return (
