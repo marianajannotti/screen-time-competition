@@ -278,6 +278,8 @@ export async function addFriendship(user_id, friend_id) {
 
 export async function removeFriendship(user_id, friend_id) {
   await delay()
+  if (!user_id || !friend_id) return Promise.reject({ message: 'Invalid arguments' })
+  if (user_id === friend_id) return Promise.reject({ message: "Can't remove yourself" })
   const db = load()
   db.friendships = (db.friendships || []).filter((f) => !(f.user_id === user_id && f.friend_id === friend_id))
   save(db)

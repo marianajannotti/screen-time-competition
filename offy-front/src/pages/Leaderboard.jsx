@@ -21,6 +21,7 @@ export default function Leaderboard(){
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
   const [search, setSearch] = useState('')
+  const [addingFriend, setAddingFriend] = useState(null)
   // Auto-seed on first load if needed
   useEffect(()=>{ seedMonthlyMockData() },[])
   const [friends, setFriends] = useState([])
@@ -29,10 +30,9 @@ export default function Leaderboard(){
     let cancelled = false
     async function loadFriends(){
       if (!user) { setFriends([]); return }
-        try{
-          const uid = getUserId(user)
-          if (!uid) { if(!cancelled) setFriends([]); return }
-          const res = await getFriendIds(uid)
+      try{
+        const uid = user.user_id || user.id
+        const res = await getFriendIds(uid)
         if (!cancelled) setFriends(res.friendIds || [])
       }catch(e){ console.error(e) }
     }
@@ -87,13 +87,15 @@ export default function Leaderboard(){
   const rankedFriends = useMemo(()=> rankedGlobal.filter(u=>friendUserSet.has(u.user_id)), [rankedGlobal, friendUserSet])
 
   function addFriend(id){
-    const uid = getUserId(user)
-    if(friendUserSet.has(id) || !uid) return
+    if(friendUserSet.has(id) || !user || addingFriend === id) return
+    const uid = user.user_id || user.id
+    setAddingFriend(id)
     addFriendship(uid, id).then(()=>{
-      const next = [...friends, id]
-      setFriends(next)
+      setFriends(prev => Array.from(new Set([...prev, id])))
+      setAddingFriend(null)
     }).catch((e)=>{
       console.error('Failed to add friend', e)
+      setAddingFriend(null)
     })
   }
 
@@ -192,7 +194,7 @@ export default function Leaderboard(){
                     <div className="avatar small"><span className="initials">{u.username?.[0]?.toUpperCase()||'?'}</span></div>
                     <span>{u.username}</span>
                   </div>
-                  <button className="btn-primary" onClick={()=>addFriend(u.user_id)}>Add</button>
+                  <button className="btn-primary" onClick={()=>addFriend(u.user_id)} disabled={addingFriend === u.user_id}>{addingFriend === u.user_id ? 'Adding...' : 'Add'}</button>
                 </div>
               ))}
               {!filteredAddable.length && <div className="muted" style={{fontSize:14}}>No users match that search.</div>}
