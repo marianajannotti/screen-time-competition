@@ -6,6 +6,7 @@ from datetime import datetime, date
 
 from .database import db
 from .models import Challenge, ChallengeParticipant, User
+from .utils import current_time_utc
 
 challenges_bp = Blueprint('challenges', __name__, url_prefix='/api/challenges')
 
@@ -362,7 +363,7 @@ def _check_and_complete_challenge(challenge):
                 participant.challenge_completed = True
         # Mark challenge as completed
         challenge.status = 'completed'
-        challenge.completed_at = datetime.utcnow()
+        challenge.completed_at = current_time_utc()
         db.session.commit()
 
 
