@@ -57,7 +57,7 @@ export const friendshipApi = {
   accept: async (friendshipId) => {
     const res = await fetch(`${BASE_URL}/${friendshipId}/accept`, {
       method: 'POST',
-      headers: { Accept: 'application/json' },
+      headers: JSON_HEADERS,
       credentials: 'include',
     })
     const data = await parseJsonSafe(res)
@@ -68,7 +68,7 @@ export const friendshipApi = {
   reject: async (friendshipId) => {
     const res = await fetch(`${BASE_URL}/${friendshipId}/reject`, {
       method: 'POST',
-      headers: { Accept: 'application/json' },
+      headers: JSON_HEADERS,
       credentials: 'include',
     })
     const data = await parseJsonSafe(res)
@@ -79,7 +79,7 @@ export const friendshipApi = {
   cancel: async (friendshipId) => {
     const res = await fetch(`${BASE_URL}/${friendshipId}/cancel`, {
       method: 'POST',
-      headers: { Accept: 'application/json' },
+      headers: JSON_HEADERS,
       credentials: 'include',
     })
     const data = await parseJsonSafe(res)

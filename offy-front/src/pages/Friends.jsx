@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { friendshipApi } from '../api/friendshipApi'
 import { minutesLabel, computeMonthlyStatsForUser } from '../api/mockApi'
 import { useAuth } from '../contexts/AuthContext'
@@ -19,7 +19,7 @@ export default function Friends() {
   )
 
   // Fetch friendship lists from the backend
-  async function load() {
+  const load = useCallback(async () => {
     setLoading(true)
     setError(null)
     try {
@@ -30,11 +30,11 @@ export default function Friends() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
 
   useEffect(() => {
     load()
-  }, [])
+  }, [load])
 
   // Send a new request and refresh lists
   async function handleSend(e) {
@@ -80,6 +80,7 @@ export default function Friends() {
           <input
             type="text"
             placeholder="Enter username"
+            aria-label="Friend username"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             disabled={submitting}
