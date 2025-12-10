@@ -13,9 +13,13 @@ challenges_bp = Blueprint('challenges', __name__, url_prefix='/api/challenges')
 @challenges_bp.route('', methods=['POST'])
 @login_required
 def create_challenge():
-    """Create a new challenge.
-    
-    Expected JSON:
+    """
+    Create a new challenge.
+    Args:
+        None (uses JSON body from request)
+    Returns:
+        JSON response with created challenge or error message.
+    Example JSON:
         {
             "name": "1 week without TikTok",
             "description": "Optional description",
@@ -97,7 +101,13 @@ def create_challenge():
 @challenges_bp.route('', methods=['GET'])
 @login_required
 def get_challenges():
-    """Get all challenges for the current user (owned or participating)."""
+    """
+    Get all challenges for the current user (owned or participating).
+    Args:
+        None
+    Returns:
+        JSON response with a list of challenges and user stats.
+    """
     
     # Get all participations for current user
     participations = ChallengeParticipant.query.filter_by(
@@ -123,7 +133,13 @@ def get_challenges():
 @challenges_bp.route('/<int:challenge_id>', methods=['GET'])
 @login_required
 def get_challenge(challenge_id):
-    """Get a specific challenge with full details."""
+    """
+    Get a specific challenge with full details.
+    Args:
+        challenge_id: ID of the challenge to retrieve.
+    Returns:
+        JSON response with challenge details and user stats.
+    """
     
     challenge = Challenge.query.get_or_404(challenge_id)
     
@@ -145,7 +161,13 @@ def get_challenge(challenge_id):
 @challenges_bp.route('/<int:challenge_id>/leaderboard', methods=['GET'])
 @login_required
 def get_leaderboard(challenge_id):
-    """Get live leaderboard for a challenge showing all participants and their stats."""
+    """
+    Get live leaderboard for a challenge showing all participants and their stats.
+    Args:
+        challenge_id: ID of the challenge.
+    Returns:
+        JSON response with challenge info, owner username, and leaderboard list.
+    """
     
     challenge = Challenge.query.get_or_404(challenge_id)
     
@@ -199,9 +221,13 @@ def get_leaderboard(challenge_id):
 @challenges_bp.route('/<int:challenge_id>/invite', methods=['POST'])
 @login_required
 def invite_to_challenge(challenge_id):
-    """Invite additional members to a challenge (only owner can invite).
-    
-    Expected JSON:
+    """
+    Invite additional members to a challenge (only owner can invite).
+    Args:
+        challenge_id: ID of the challenge.
+    Returns:
+        JSON response with invite result and count.
+    Example JSON:
         {
             "user_ids": [5, 6, 7]
         }
@@ -246,7 +272,13 @@ def invite_to_challenge(challenge_id):
 @challenges_bp.route('/<int:challenge_id>/leave', methods=['POST'])
 @login_required
 def leave_challenge(challenge_id):
-    """Leave a challenge (any participant can leave, except owner)."""
+    """
+    Leave a challenge (any participant can leave, except owner).
+    Args:
+        challenge_id: ID of the challenge to leave.
+    Returns:
+        JSON response with success or error message.
+    """
     
     challenge = Challenge.query.get_or_404(challenge_id)
     
@@ -273,7 +305,13 @@ def leave_challenge(challenge_id):
 @challenges_bp.route('/<int:challenge_id>', methods=['DELETE'])
 @login_required
 def delete_challenge(challenge_id):
-    """Delete a challenge (only owner can delete)."""
+    """
+    Delete a challenge (only owner can delete).
+    Args:
+        challenge_id: ID of the challenge to delete.
+    Returns:
+        JSON response with success or error message.
+    """
     
     challenge = Challenge.query.get_or_404(challenge_id)
     
@@ -289,10 +327,17 @@ def delete_challenge(challenge_id):
 
 
 def _check_and_complete_challenge(challenge):
-    """Helper to auto-complete a challenge if end_date has passed.
-    
-    Called when fetching challenges to automatically complete expired ones.
-    End date is inclusive - challenge runs until end of that day.
+    """
+    Checks if the challenge's end date has passed and, if so, completes the challenge.
+    Assigns final ranks and winner(s) to participants who logged screen time, and marks the challenge as completed.
+    Args:
+        challenge (Challenge): The Challenge object to check and complete if needed.
+    Returns:
+        None. Modifies the challenge and its participants in-place and commits changes to the database.
+    Notes:
+        - Called when fetching challenges to automatically complete expired ones.
+        - End date is inclusive; challenge runs until the end of that day.
+        - Only participants who logged at least once are ranked and considered for winning.
     """
     today = date.today()
     
@@ -302,92 +347,24 @@ def _check_and_complete_challenge(challenge):
         participants = ChallengeParticipant.query.filter_by(
             challenge_id=challenge.id
         ).all()
-        
-        # Use helper function to assign ranks and winners
-        _assign_ranks_and_winners(participants)
-        
+        # Assign ranks and determine winners (inline logic)
+        active_participants = [p for p in participants if p.days_logged > 0]
+        if active_participants:
+            # Sort by average daily screen time (lowest wins)
+            active_participants.sort(key=lambda p: p.total_screen_time_minutes / p.days_logged)
+            # Find the minimum average daily screen time
+            min_avg = active_participants[0].total_screen_time_minutes / active_participants[0].days_logged
+            # Assign ranks and mark completed
+            for rank, participant in enumerate(active_participants, start=1):
+                participant.final_rank = rank
+                avg = participant.total_screen_time_minutes / participant.days_logged
+                participant.is_winner = (avg == min_avg)
+                participant.challenge_completed = True
         # Mark challenge as completed
         challenge.status = 'completed'
         challenge.completed_at = datetime.utcnow()
-        
         db.session.commit()
 
 
-@challenges_bp.route('/<int:challenge_id>/complete', methods=['POST'])
-@login_required
-def complete_challenge(challenge_id):
-    """Manually complete a challenge early (owner only).
-    
-    Normally challenges auto-complete when end_date passes.
-    This allows owner to end a challenge early if needed.
-    """
-    
-    challenge = Challenge.query.get_or_404(challenge_id)
-    
-    # Only owner can manually complete
-    if challenge.owner_id != current_user.id:
-        return jsonify({'error': 'Only the challenge owner can manually complete it'}), 403
-    
-    # Check if already completed
-    if challenge.status == 'completed':
-        return jsonify({'error': 'Challenge already completed'}), 400
-    
-    # Get all participants
-    participants = ChallengeParticipant.query.filter_by(
-        challenge_id=challenge_id
-    ).all()
-    
-    # Use helper function to assign ranks and winners
-    active_participants = _assign_ranks_and_winners(participants)
-    
-    # Mark challenge as completed
-    challenge.status = 'completed'
-    challenge.completed_at = datetime.utcnow()
-    
-    db.session.commit()
-    
-    winner_info = None
-    if active_participants:
-        winner_participant = active_participants[0]
-        winner_user = User.query.get(winner_participant.user_id)
-        if winner_user:
-            winner_info = {
-                'user_id': winner_user.id,
-                'username': winner_user.username,
-                'average_daily_minutes': round(
-                    winner_participant.total_screen_time_minutes / winner_participant.days_logged, 2
-                )
-            }
-    
-    return jsonify({
-        'message': 'Challenge completed successfully',
-        'winner': winner_info
-    }), 200
 
-def _assign_ranks_and_winners(participants):
-    """Helper function to assign ranks and determine winners.
-    
-    Args:
-        participants: List of ChallengeParticipant objects
-        
-    Returns:
-        List of active participants (those who logged at least once), sorted by rank
-    """
-    # Filter to those who logged at least once
-    active_participants = [p for p in participants if p.days_logged > 0]
-    
-    if active_participants:
-        # Sort by average daily screen time (lowest wins)
-        active_participants.sort(key=lambda p: p.total_screen_time_minutes / p.days_logged)
-        
-        # Find the minimum average daily screen time
-        min_avg = active_participants[0].total_screen_time_minutes / active_participants[0].days_logged
-        
-        # Assign ranks and mark completed
-        for rank, participant in enumerate(active_participants, start=1):
-            participant.final_rank = rank
-            avg = participant.total_screen_time_minutes / participant.days_logged
-            participant.is_winner = (avg == min_avg)
-            participant.challenge_completed = True
-    
-    return active_participants
+

@@ -8,7 +8,20 @@ from .utils import current_time_utc
 
 
 class User(UserMixin, db.Model):
-    """Authenticated user tracked by Flask-Login."""
+    """
+    User model for authenticated users tracked by Flask-Login.
+
+    Attributes:
+        id (int): Primary key.
+        username (str): Unique username.
+        email (str): Unique email address.
+        password_hash (str): Hashed password.
+        streak_count (int): Gamification streak count.
+        total_points (int): Gamification points.
+        reset_token (str): Password reset token.
+        reset_token_expiry (datetime): Expiry for reset token.
+        created_at (datetime): Account creation timestamp.
+    """
 
     __tablename__ = "users"
 
@@ -53,7 +66,17 @@ class User(UserMixin, db.Model):
 
 
 class ScreenTimeLog(db.Model):
-    """Per-day screen time entries keyed to an app (or total)."""
+    """
+    Per-day screen time log for a user and app.
+
+    Attributes:
+        id (int): Primary key.
+        user_id (int): Foreign key to User.
+        app_name (str): App name or '__TOTAL__'.
+        date (date): Date of log.
+        screen_time_minutes (int): Minutes spent.
+        created_at (datetime): Log creation timestamp.
+    """
 
     __tablename__ = "screen_time_logs"
 
@@ -92,7 +115,15 @@ class ScreenTimeLog(db.Model):
 
 
 class Goal(db.Model):
-    """Daily/weekly screen-time goals."""
+    """
+    Daily or weekly screen time goal for a user.
+
+    Attributes:
+        id (int): Primary key.
+        user_id (int): Foreign key to User.
+        goal_type (str): 'daily' or 'weekly'.
+        target_minutes (int): Target minutes for the goal.
+    """
 
     __tablename__ = "goals"
 
@@ -118,7 +149,16 @@ class Goal(db.Model):
 
 
 class Friendship(db.Model):
-    """Friend relationships used by leaderboard features."""
+    """
+    Friend relationship between two users for leaderboard/social features.
+
+    Attributes:
+        id (int): Primary key.
+        user_id (int): User who initiated the friendship.
+        friend_id (int): Friend user.
+        status (str): 'pending' or 'accepted'.
+        created_at (datetime): Friendship creation timestamp.
+    """
 
     __tablename__ = "friendships"
     __table_args__ = (
@@ -174,7 +214,17 @@ class Friendship(db.Model):
 
 
 class Badge(db.Model):
-    """Available badges that users can earn."""
+    """
+    Badge definition that users can earn.
+
+    Attributes:
+        id (int): Primary key.
+        name (str): Badge name.
+        description (str): Badge description.
+        badge_type (str): Category (streak, reduction, etc).
+        icon (str): Emoji icon.
+        created_at (datetime): Badge creation timestamp.
+    """
     
     __tablename__ = "badges"
     
@@ -201,7 +251,15 @@ class Badge(db.Model):
 
 
 class UserBadge(db.Model):
-    """Junction table for user-earned badges with timestamps."""
+    """
+    Junction table for badges earned by users, with timestamp.
+
+    Attributes:
+        id (int): Primary key.
+        user_id (int): Foreign key to User.
+        badge_id (int): Foreign key to Badge.
+        earned_at (datetime): When badge was earned.
+    """
     
     __tablename__ = "user_badges"
     
@@ -230,7 +288,24 @@ class UserBadge(db.Model):
 
 
 class Challenge(db.Model):
-    """Screen time challenges that users can create and participate in."""
+    """
+    Screen time challenge that users can create and participate in.
+
+    Attributes:
+        id (int): Primary key.
+        name (str): Challenge name.
+        description (str): Optional description.
+        owner_id (int): User who created the challenge.
+        target_app (str): App name or '__TOTAL__'.
+        target_minutes (int): Daily target in minutes.
+        start_date (date): Start date.
+        end_date (date): End date.
+        status (str): 'upcoming', 'active', 'completed', or 'deleted'.
+        created_at (datetime): Creation timestamp.
+        completed_at (datetime): Completion timestamp.
+        owner (User): Relationship to owner.
+        participants (list[ChallengeParticipant]): List of participants.
+    """
     
     __tablename__ = "challenges"
     
@@ -283,7 +358,24 @@ class Challenge(db.Model):
 
 
 class ChallengeParticipant(db.Model):
-    """Junction table tracking users participating in challenges with their stats."""
+    """
+    Junction table tracking users participating in challenges, with stats and results.
+
+    Attributes:
+        id (int): Primary key.
+        challenge_id (int): Foreign key to Challenge.
+        user_id (int): Foreign key to User.
+        joined_at (datetime): When user joined the challenge.
+        days_passed (int): Days user stayed under target.
+        days_failed (int): Days user exceeded target.
+        total_screen_time_minutes (int): Total minutes logged.
+        days_logged (int): Number of days with logs.
+        final_rank (int): Final rank after challenge completes.
+        is_winner (bool): True if user is a winner.
+        challenge_completed (bool): True if user completed challenge.
+        challenge (Challenge): Relationship to challenge.
+        user (User): Relationship to user.
+    """
     
     __tablename__ = "challenge_participants"
     

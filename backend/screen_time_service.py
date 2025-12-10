@@ -100,7 +100,8 @@ class ScreenTimeService:
 
     @staticmethod
     def create_entry(user_id: int, data: Dict) -> ScreenTimeLog:
-        """Create a new screen time entry.
+        """
+        Create a new screen time entry and update all relevant challenge stats for the user.
 
         Args:
             user_id (int): ID of the user creating the entry.
@@ -111,6 +112,11 @@ class ScreenTimeService:
 
         Raises:
             ValidationError: If data is invalid.
+
+        Side Effects:
+            - Updates ChallengeParticipant stats for all active challenges the user is in (days_logged, total_screen_time_minutes, days_passed, days_failed).
+            - Triggers badge logic to check and award badges if criteria are met.
+            - Commits all changes to the database.
         """
         app_name, total_minutes, entry_date = ScreenTimeService._validate_payload(data)
 
