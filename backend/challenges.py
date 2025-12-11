@@ -31,6 +31,8 @@ def create_challenge():
             "invited_user_ids": [2, 3, 4]
         }
     """
+    if request.content_type != "application/json":
+        return jsonify({'error': 'Content-Type must be application/json'}), 415
     data = request.get_json()
     
     # Validate required fields
