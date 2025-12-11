@@ -134,7 +134,7 @@ export default function Profile() {
   const earnedBadgeMap = useMemo(() => {
     const map = new Map()
     userBadges.forEach(badge => {
-      map.set(badge.name, badge.earned_at || badge.earnedAt)
+      map.set(badge.name, badge.earned_at)
     })
     return map
   }, [userBadges])
