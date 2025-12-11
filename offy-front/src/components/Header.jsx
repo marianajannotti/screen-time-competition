@@ -37,11 +37,11 @@ export default function Header() {
   const NavLinks = (
     <nav className="nav-links">
       <NavLink to="/dashboard" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
-        <img src={homeIcon} alt="Home" style={{ width: '20px', height: '20px', marginRight: '6px', verticalAlign: 'middle' }} />
+        <img src={homeIcon} alt="Home" />
         Home
       </NavLink>
       <NavLink to="/leaderboard" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
-        <img src={trophyIcon} alt="Leaderboard" style={{ width: '20px', height: '20px', marginRight: '6px', verticalAlign: 'middle' }} />
+        <img src={trophyIcon} alt="Leaderboard" />
         Leaderboard
       </NavLink>
       <button aria-label="Open profile" onClick={() => nav('/profile')} className={`header-avatar ${location.pathname.startsWith('/profile') ? 'active' : ''}`}>

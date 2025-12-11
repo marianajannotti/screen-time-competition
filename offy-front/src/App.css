@@ -46,8 +46,9 @@ main { flex: 1 1 auto; }
 .auth-top-brand{display:flex;align-items:center;gap:8px;padding:12px 16px}
 .auth-top-brand .dot{width:36px;height:36px;border-radius:50%;background:linear-gradient(90deg,var(--purple),var(--accent-2));display:inline-flex;align-items:center;justify-content:center;color:#fff}
 .nav-links{display:flex;align-items:center;gap:16px}
-.nav-link{padding:6px 10px;border-radius:8px;color:#213547;text-decoration:none}
+.nav-link{padding:6px 10px;border-radius:8px;color:#213547;text-decoration:none;display:flex;align-items:center}
 .nav-link.active{background:#f3f4f8;color:#111;border:1px solid rgba(15,23,42,0.06)}
+.nav-link img{width:20px;height:20px;margin-right:6px;vertical-align:middle}
 
 .header-actions{display:flex;align-items:center;gap:10px;flex-shrink:1;flex-wrap:wrap;min-width:0}
 .header-avatar{width:36px;height:36px;border-radius:18px;background:#ff8a00;display:flex;align-items:center;justify-content:center;color:#fff;border:none;cursor:pointer}
