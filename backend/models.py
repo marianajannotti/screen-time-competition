@@ -295,7 +295,7 @@ class ChallengeParticipant(db.Model):
     joined_at = db.Column(db.DateTime, default=current_time_utc)
     
     # Daily performance tracking (cumulative stats for profile display)
-    days_passed = db.Column(db.Integer, default=0)  # Total days stayed under target (only counts logged days)
+    days_passed = db.Column(db.Integer, default=0)  # Days where total screen time was at or under target (only counts logged days)
     days_failed = db.Column(db.Integer, default=0)  # Total days exceeded target (only counts logged days)
     
     # Overall performance (calculated from screen time logs)
