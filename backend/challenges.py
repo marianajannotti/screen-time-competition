@@ -47,6 +47,20 @@ def create_challenge():
             response = make_response(jsonify({'error': 'Missing required fields'}), 400)
             return add_api_headers(response)
         
+        # Validate challenge name
+        name = data['name'].strip() if isinstance(data['name'], str) else ''
+        if not name:
+            response = make_response(jsonify({'error': 'Challenge name cannot be empty'}), 400)
+            return add_api_headers(response)
+        if len(name) > 200:
+            response = make_response(jsonify({'error': 'Challenge name must be 200 characters or less'}), 400)
+            return add_api_headers(response)
+        
+        # Validate target_minutes
+        if not isinstance(data['target_minutes'], int) or data['target_minutes'] <= 0:
+            response = make_response(jsonify({'error': 'Target minutes must be a positive integer'}), 400)
+            return add_api_headers(response)
+        
         try:
             start_date = datetime.strptime(data['start_date'], '%Y-%m-%d').date()
             end_date = datetime.strptime(data['end_date'], '%Y-%m-%d').date()
@@ -64,6 +78,22 @@ def create_challenge():
             response = make_response(jsonify({'error': 'Start date cannot be in the past'}), 400)
             return add_api_headers(response)
         
+        # Validate invited user IDs exist BEFORE creating challenge
+        invited_ids = data.get('invited_user_ids', [])
+        if invited_ids:
+            invalid_ids = []
+            for user_id in invited_ids:
+                if user_id != current_user.id:  # Exclude owner (already participating)
+                    user = User.query.get(user_id)
+                    if not user:
+                        invalid_ids.append(user_id)
+            
+            if invalid_ids:
+                response = make_response(
+                    jsonify({'error': f'User IDs not found: {invalid_ids}'}), 400
+                )
+                return add_api_headers(response)
+        
         # Determine initial status
         # Note: end_date is inclusive - challenge runs until end of that day (23:59:59)
         if start_date > today:
@@ -73,7 +103,7 @@ def create_challenge():
         
         # Create challenge
         challenge = Challenge(
-            name=data['name'],
+            name=name,
             description=data.get('description'),
             owner_id=current_user.id,
             target_app=data['target_app'],
@@ -93,10 +123,9 @@ def create_challenge():
         )
         db.session.add(owner_participant)
         
-        # Add invited users as participants
-        invited_ids = data.get('invited_user_ids', [])
+        # Add invited users as participants (already validated)
         for user_id in invited_ids:
-            if user_id != current_user.id:  # Don't duplicate owner
+            if user_id != current_user.id:  # Exclude owner (already added)
                 participant = ChallengeParticipant(
                     challenge_id=challenge.id,
                     user_id=user_id
@@ -111,10 +140,12 @@ def create_challenge():
         }), 201)
         return add_api_headers(response)
     
-    except Exception as e:
+    except Exception as e:  # pragma: no cover - bubbled to client
         db.session.rollback()
+        from flask import current_app
+        current_app.logger.error(f'Failed to create challenge: {str(e)}')
         response = make_response(
-            jsonify({'error': f'Failed to create challenge: {str(e)}'}), 500
+            jsonify({'error': 'Failed to create challenge'}), 500
         )
         return add_api_headers(response)
 
@@ -150,6 +181,7 @@ def get_challenges():
     
     response = make_response(jsonify({'challenges': challenges_data}), 200)
     return add_api_headers(response)
+
 
 @challenges_bp.route('/<int:challenge_id>', methods=['GET'])
 @login_required
@@ -213,27 +245,31 @@ def get_leaderboard(challenge_id):
     leaderboard = []
     for participant in participants:
         user = User.query.get(participant.user_id)
-        if user:
-            # Calculate average daily screen time for fair comparison
-            # Division by zero is prevented by the conditional check (days_logged > 0)
-            # Participants with no logged days are assigned a high value to sort last
-            avg_daily = (participant.total_screen_time_minutes / participant.days_logged 
-                        if participant.days_logged > 0 else float('inf'))
-            
-            leaderboard.append({
-                'user_id': user.id,
-                'username': user.username,
-                'total_screen_time_minutes': participant.total_screen_time_minutes,
-                'days_logged': participant.days_logged,
-                'days_passed': participant.days_passed,
-                'days_failed': participant.days_failed,
-                'average_daily_minutes': round(avg_daily, 2),
-                'final_rank': participant.final_rank,
-                'is_winner': participant.is_winner
-            })
+        if not user:
+            continue  # Skip if user was deleted
+        
+        # Calculate average daily screen time for fair comparison
+        # Division by zero is prevented by the conditional check (days_logged > 0)
+        # Participants with no logged days are assigned None (sorts last)
+        if participant.days_logged > 0:
+            avg_daily = round(participant.total_screen_time_minutes / participant.days_logged, 2)
+        else:
+            avg_daily = None  # Use None instead of infinity for JSON serialization
+        
+        leaderboard.append({
+            'user_id': user.id,
+            'username': user.username,
+            'total_screen_time_minutes': participant.total_screen_time_minutes,
+            'days_logged': participant.days_logged,
+            'days_passed': participant.days_passed,
+            'days_failed': participant.days_failed,
+            'average_daily_minutes': avg_daily,
+            'final_rank': participant.final_rank,
+            'is_winner': participant.is_winner
+        })
     
-    # Sort by average daily screen time (lowest first)
-    leaderboard.sort(key=lambda x: x['average_daily_minutes'])
+    # Sort by average daily screen time (lowest first, None values sort last)
+    leaderboard.sort(key=lambda x: (x['average_daily_minutes'] is None, x['average_daily_minutes'] or 0))
     
     response = make_response(jsonify({
         'challenge': challenge.to_dict(),
@@ -279,6 +315,19 @@ def invite_to_challenge(challenge_id):
         data = request.get_json()
         user_ids = data.get('user_ids', [])
         
+        # Validate all user IDs exist
+        invalid_ids = []
+        for user_id in user_ids:
+            user = User.query.get(user_id)
+            if not user:
+                invalid_ids.append(user_id)
+        
+        if invalid_ids:
+            response = make_response(
+                jsonify({'error': f'User IDs not found: {invalid_ids}'}), 400
+            )
+            return add_api_headers(response)
+        
         invited_count = 0
         for user_id in user_ids:
             # Check if already participating
@@ -305,8 +354,10 @@ def invite_to_challenge(challenge_id):
     
     except Exception as e:  # pragma: no cover - bubbled to client
         db.session.rollback()
+        from flask import current_app
+        current_app.logger.error(f'Failed to invite members: {str(e)}')
         response = make_response(
-            jsonify({'error': f'Failed to invite members: {str(e)}'}), 500
+            jsonify({'error': 'Failed to invite members'}), 500
         )
         return add_api_headers(response)
 
@@ -322,8 +373,6 @@ def leave_challenge(challenge_id):
         JSON response with success or error message.
     """
     try:
-        challenge = Challenge.query.get_or_404(challenge_id)
-        
         # Find user's participation
         participation = ChallengeParticipant.query.filter_by(
             challenge_id=challenge_id,
@@ -335,7 +384,7 @@ def leave_challenge(challenge_id):
             return add_api_headers(response)
         
         # Don't allow owner to leave (they should delete instead)
-        if challenge.owner_id == current_user.id:
+        if participation.challenge.owner_id == current_user.id:
             response = make_response(jsonify({'error': 'Challenge owner cannot leave. Delete the challenge instead.'}), 403)
             return add_api_headers(response)
         
@@ -346,13 +395,14 @@ def leave_challenge(challenge_id):
         response = make_response(jsonify({'message': 'Successfully left the challenge'}), 200)
         return add_api_headers(response)
     
-    except Exception as e:
+    except Exception as e:  # pragma: no cover - bubbled to client
         db.session.rollback()
+        from flask import current_app
+        current_app.logger.error(f'Failed to leave challenge: {str(e)}')
         response = make_response(
-            jsonify({'error': f'Failed to leave challenge: {str(e)}'}), 500
+            jsonify({'error': 'Failed to leave challenge'}), 500
         )
         return add_api_headers(response)
-
 
 
 @challenges_bp.route('/<int:challenge_id>', methods=['DELETE'])
@@ -380,10 +430,12 @@ def delete_challenge(challenge_id):
         response = make_response(jsonify({'message': 'Challenge deleted successfully'}), 200)
         return add_api_headers(response)
     
-    except Exception as e:
+    except Exception as e:  # pragma: no cover - bubbled to client
         db.session.rollback()
+        from flask import current_app
+        current_app.logger.error(f'Failed to delete challenge: {str(e)}')
         response = make_response(
-            jsonify({'error': f'Failed to delete challenge: {str(e)}'}), 500
+            jsonify({'error': 'Failed to delete challenge'}), 500
         )
         return add_api_headers(response)
 
@@ -425,16 +477,19 @@ def _check_and_complete_challenge(challenge):
             # Find the minimum average daily screen time
             min_avg = participant_averages[0][1]
             
-            # Assign ranks and mark completed
-            for rank, (participant, avg) in enumerate(participant_averages, start=1):
-                participant.final_rank = rank
+            # Assign ranks with proper skipping for ties
+            # Example: If 2 people tie for rank 1, next person gets rank 3 (not 2)
+            current_rank = 1
+            for i, (participant, avg) in enumerate(participant_averages):
+                # If not first and average differs from previous, update rank to current position
+                if i > 0 and avg != participant_averages[i-1][1]:
+                    current_rank = i + 1
+                
+                participant.final_rank = current_rank
                 participant.is_winner = (avg == min_avg)
                 participant.challenge_completed = True
         # Mark challenge as completed
         challenge.status = 'completed'
         challenge.completed_at = current_time_utc()
         db.session.commit()
-
-
-
 

@@ -684,7 +684,10 @@ class ChallengesAPITestCase(unittest.TestCase):
         yesterday = date.today() - timedelta(days=1)
         week_ago = yesterday - timedelta(days=6)
 
-        # Create expired challenge
+        # Create expired challenge directly in DB (bypassing API validation)
+        # Note: The API would reject start_date in the past, but we need to test
+        # the auto-completion logic for challenges that were valid when created
+        # but have since expired.
         challenge = Challenge(
             name="Expired Challenge",
             owner_id=self.user1.id,
