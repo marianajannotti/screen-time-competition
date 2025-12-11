@@ -303,7 +303,7 @@ def invite_to_challenge(challenge_id):
         }), 200)
         return add_api_headers(response)
     
-    except Exception as e:
+    except Exception as e:  # pragma: no cover - bubbled to client
         db.session.rollback()
         response = make_response(
             jsonify({'error': f'Failed to invite members: {str(e)}'}), 500
