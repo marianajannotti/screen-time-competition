@@ -25,6 +25,7 @@ export default function WeeklyChart({ days, chartData, appColorMap }) {
   const height = 180
   const barW = 54
   const gap = 64
+  const BAR_X_OFFSET = 14
   const totals = days.map(d => chartData[d]?.total || 0)
   const max = Math.max(...totals, 1)
   const maxHours = Math.ceil(max / 60)
@@ -52,7 +53,7 @@ export default function WeeklyChart({ days, chartData, appColorMap }) {
             // No logs: just show day label without a bar.
             return (
               <g key={day}>
-                <text x={x + barW/2} y={height + 14} textAnchor="middle" fontSize="12" fill="#999">{day}</text>
+                <text x={x + barW/2 + BAR_X_OFFSET} y={height + 14} textAnchor="middle" fontSize="12" fill="#999">{day}</text>
               </g>
             )
           }
@@ -70,7 +71,7 @@ export default function WeeklyChart({ days, chartData, appColorMap }) {
                 return (
                   <rect
                     key={app}
-                    x={x + 14}
+                    x={x + BAR_X_OFFSET}
                     y={y}
                     width={barW}
                     height={h}
@@ -98,7 +99,7 @@ export default function WeeklyChart({ days, chartData, appColorMap }) {
                 const remY = yBase - yOffset - remH
                 return (
                   <rect 
-                    x={x + 14} 
+                    x={x + BAR_X_OFFSET} 
                     y={remY} 
                     width={barW} 
                     height={remH} 
@@ -116,7 +117,7 @@ export default function WeeklyChart({ days, chartData, appColorMap }) {
                 const stripY = yBase - totalH
                 return (
                   <rect
-                    x={x + 14}
+                    x={x + BAR_X_OFFSET}
                     y={stripY}
                     width={barW}
                     height={stripH}
@@ -127,7 +128,7 @@ export default function WeeklyChart({ days, chartData, appColorMap }) {
                   />
                 )
               })()}
-      <text x={x + barW/2 + 14} y={height + 14} textAnchor="middle" fontSize="12" fill="#444">{day}</text>
+      <text x={x + barW/2 + BAR_X_OFFSET} y={height + 14} textAnchor="middle" fontSize="12" fill="#444">{day}</text>
             </g>
           )
         })}

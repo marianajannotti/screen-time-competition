@@ -10,13 +10,17 @@ export default function Header() {
   const initials = (user?.username || user?.name || 'U').trim().charAt(0).toUpperCase()
   const isDashboard = location.pathname.startsWith('/dashboard')
 
+  // Auth pages that should only show centered brand dot
+  const authPages = ['/signin', '/signup', '/forgot-password', '/reset-password']
+  const isAuthPage = authPages.some(page => location.pathname.startsWith(page))
+
   function onSignOut() {
     signOut()
     nav('/signin')
   }
 
   // Hide full header on auth pages, show centered brand dot above the auth card
-  if (location.pathname === '/signin' || location.pathname === '/signup') {
+  if (isAuthPage) {
     return (
       <div className="auth-top-brand center" onClick={() => nav('/')}> 
         <span className="dot">O</span>
