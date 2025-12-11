@@ -131,15 +131,16 @@ class ScreenTimeService:
 
         # --- Challenge stats update logic ---
         from .models import Challenge, ChallengeParticipant
+        from sqlalchemy.orm import selectinload
         
-        # Find all active challenges for this user
+        # Find all active challenges for this user with eager loading to avoid N+1 queries
         active_challenges = Challenge.query.join(ChallengeParticipant).filter(
             ChallengeParticipant.user_id == user_id,
             Challenge.status == 'active',
             Challenge.start_date <= entry_date,
             Challenge.end_date >= entry_date,
             ((Challenge.target_app == app_name) | (Challenge.target_app == '__TOTAL__'))
-        ).all()
+        ).options(selectinload(Challenge.participants)).all()
         
         for challenge in active_challenges:
             participant = ChallengeParticipant.query.filter_by(
@@ -149,10 +150,16 @@ class ScreenTimeService:
             if not participant:
                 continue
             
-            # Build base query for this user's logs
-            base_query = ScreenTimeLog.query.filter_by(user_id=user_id)
+            # Build base query for this user's logs within the challenge date range
+            base_query = ScreenTimeLog.query.filter(
+                ScreenTimeLog.user_id == user_id,
+                ScreenTimeLog.date >= challenge.start_date,
+                ScreenTimeLog.date <= challenge.end_date
+            )
+            
+            # Filter by app if not tracking total screen time
             if challenge.target_app != '__TOTAL__':
-                base_query = base_query.filter_by(app_name=challenge.target_app)
+                base_query = base_query.filter(ScreenTimeLog.app_name == challenge.target_app)
             
             # Count unique days logged
             days_logged = base_query.with_entities(
