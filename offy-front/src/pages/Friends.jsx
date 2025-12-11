@@ -73,7 +73,6 @@ export default function Friends() {
       <section className="card friends-send-card">
         <div>
           <h3>Send a friend request</h3>
-          <p className="muted">Share usernames to connect with friends.</p>
         </div>
         <form className="friends-send-form" onSubmit={handleSend}>
           <input
