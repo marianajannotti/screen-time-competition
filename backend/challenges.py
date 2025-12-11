@@ -69,8 +69,8 @@ def create_challenge():
             return add_api_headers(response)
         
         # Validate dates
-        if end_date <= start_date:
-            response = make_response(jsonify({'error': 'End date must be after start date'}), 400)
+        if end_date < start_date:
+            response = make_response(jsonify({'error': 'End date must not be before start date'}), 400)
             return add_api_headers(response)
         
         today = date.today()
