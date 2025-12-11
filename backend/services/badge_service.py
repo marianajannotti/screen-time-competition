@@ -1,9 +1,9 @@
 """Badge service for managing badges and user badge achievements."""
 
 import logging
-from .database import db
-from .models import Badge, UserBadge
-from .utils import current_time_utc
+from ..database import db
+from ..models import Badge, UserBadge
+from ..utils.helpers import current_time_utc
 from sqlalchemy.orm import joinedload
 
 logger = logging.getLogger(__name__)

@@ -28,5 +28,5 @@ def send_password_reset_email(email: str, reset_token: str) -> None:
     msg.body = render_template('emails/password_reset.txt', reset_url=reset_url)
     
     # Send email
-    from . import mail
+    from .. import mail
     mail.send(msg)

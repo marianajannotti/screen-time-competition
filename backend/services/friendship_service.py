@@ -7,8 +7,8 @@ from typing import Dict, List, Optional
 from sqlalchemy import or_
 from sqlalchemy.orm import selectinload
 
-from .database import db
-from .models import Friendship, User
+from ..database import db
+from ..models import Friendship, User
 
 
 class ValidationError(Exception):

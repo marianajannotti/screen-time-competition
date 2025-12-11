@@ -2,8 +2,8 @@
 
 from datetime import timedelta, date
 from sqlalchemy import func, and_
-from .database import db
-from .models import User, ScreenTimeLog, Friendship  
+from ..database import db
+from ..models import User, ScreenTimeLog, Friendship  
 from .badge_service import BadgeService
 from .screen_time_service import ScreenTimeService
 

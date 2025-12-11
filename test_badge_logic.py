@@ -22,7 +22,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from backend import create_app
 from backend.models import User
 from backend.database import db
-from backend.badge_logic import BadgeLogic
+from backend.services import BadgeLogic
 
 def main():
     app = create_app("development")

@@ -6,9 +6,9 @@ import logging
 
 from sqlalchemy import func, and_
 
-from .database import db
-from .models import ScreenTimeLog, User
-from .utils import canonicalize_app_name, list_allowed_apps
+from ..database import db
+from ..models import ScreenTimeLog, User
+from ..utils.helpers import canonicalize_app_name, list_allowed_apps
 
 logger = logging.getLogger(__name__)
 

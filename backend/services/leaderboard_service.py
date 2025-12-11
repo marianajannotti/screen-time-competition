@@ -3,7 +3,7 @@
 from datetime import date, timedelta
 from typing import Dict, List, Optional, Tuple
 
-from .models import User, ScreenTimeLog
+from ..models import User, ScreenTimeLog
 from .streak_service import StreakService
 
 
