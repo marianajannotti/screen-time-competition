@@ -139,7 +139,7 @@ class ScreenTimeService:
             Challenge.status == 'active',
             Challenge.start_date <= entry_date,
             Challenge.end_date >= entry_date,
-            ((Challenge.target_app == app_name) | (Challenge.target_app == '__TOTAL__'))
+            (Challenge.target_app == app_name) | (Challenge.target_app == '__TOTAL__')
         ).options(selectinload(Challenge.participants)).all()
         
         for challenge in active_challenges:

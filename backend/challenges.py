@@ -214,10 +214,10 @@ def get_leaderboard(challenge_id):
         user = User.query.get(participant.user_id)
         if user:
             # Calculate average daily screen time for fair comparison
-            # Note: Division by zero is prevented by only including participants with days_logged > 0
-            # in the final leaderboard sorting (see line 212 filtering logic)
+            # Division by zero is prevented by the conditional check (days_logged > 0)
+            # Participants with no logged days are assigned a high value to sort last
             avg_daily = (participant.total_screen_time_minutes / participant.days_logged 
-                        if participant.days_logged > 0 else 999999)
+                        if participant.days_logged > 0 else float('inf'))
             
             leaderboard.append({
                 'user_id': user.id,
