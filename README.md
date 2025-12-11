@@ -67,7 +67,7 @@ This automatically starts both servers:
 **Terminal 1 - Backend:**
 ```bash
 source venv/bin/activate  # Activate venv if created
-python run.py
+python run_backend.py
 ```
 
 **Terminal 2 - Frontend:**

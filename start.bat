@@ -64,7 +64,7 @@ echo Press Ctrl+C to stop both servers
 echo.
 
 REM Start backend in background
-start "Flask Backend" cmd /c "python run.py"
+start "Flask Backend" cmd /c "python run_backend.py"
 
 REM Wait a bit for backend to start
 timeout /t 2 /nobreak >nul

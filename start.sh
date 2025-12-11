@@ -75,7 +75,7 @@ fi
 
 # Start backend
 echo "📦 Starting Flask backend on http://localhost:5001..."
-python run.py &
+python run_backend.py &
 BACKEND_PID=$!
 
 # Wait a bit for backend to start
