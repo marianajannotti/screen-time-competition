@@ -33,6 +33,7 @@ function WeeklyChart({ days, chartData, appColorMap }) {
   const height = 180
   const barW = 54
   const gap = 64
+  const BAR_X_OFFSET = 14
   const totals = days.map(d => chartData[d]?.total || 0)
   const max = Math.max(...totals, 1)
   const maxHours = Math.ceil(max / 60)
@@ -59,7 +60,7 @@ function WeeklyChart({ days, chartData, appColorMap }) {
             // No logs: just show day label without a bar.
             return (
               <g key={day}>
-                <text x={x + barW/2} y={height + 14} textAnchor="middle" fontSize="12" fill="#999">{day}</text>
+                <text x={x + barW/2 + BAR_X_OFFSET} y={height + 14} textAnchor="middle" fontSize="12" fill="#999">{day}</text>
               </g>
             )
           }
@@ -77,7 +78,7 @@ function WeeklyChart({ days, chartData, appColorMap }) {
                 return (
                   <rect
                     key={app}
-                    x={x + 14}
+                    x={x + BAR_X_OFFSET}
                     y={y}
                     width={barW}
                     height={h}
@@ -113,7 +114,7 @@ function WeeklyChart({ days, chartData, appColorMap }) {
               {remainder > 0 && (()=>{
                 const remH = (remainder / max) * (height - 30)
                 const remY = yBase - yOffset - remH
-                return <rect x={x + 14} y={remY} width={barW} height={remH} fill="#e2e8f0" />
+                return <rect x={x + BAR_X_OFFSET} y={remY} width={barW} height={remH} fill="#e2e8f0" />
               })()}
               {/* Small transparent strip at top for total hover without blocking app segments */}
               {total > 0 && (()=>{
@@ -122,7 +123,7 @@ function WeeklyChart({ days, chartData, appColorMap }) {
                 const stripY = yBase - totalH
                 return (
                   <rect
-                    x={x + 14}
+                    x={x + BAR_X_OFFSET}
                     y={stripY}
                     width={barW}
                     height={stripH}
@@ -148,7 +149,7 @@ function WeeklyChart({ days, chartData, appColorMap }) {
                   />
                 )
               })()}
-      <text x={x + barW/2 + 14} y={height + 14} textAnchor="middle" fontSize="12" fill="#444">{day}</text>
+      <text x={x + barW/2 + BAR_X_OFFSET} y={height + 14} textAnchor="middle" fontSize="12" fill="#444">{day}</text>
             </g>
           )
         })}
@@ -255,13 +256,23 @@ export default function Dashboard() {
   // Deterministic color mapping based on sorted unique app names for stability
   const uniqueApps = Array.from(new Set(logs.filter(l=>l.app !== '__TOTAL__').map(l=>l.app))).sort()
   const appColorMap = uniqueApps.reduce((acc, app, idx) => { acc[app] = chartColors[idx % chartColors.length]; return acc }, {})
-  const last7Days = Array.from({length:7}, (_,i)=>{
-    const d = new Date()
-    d.setDate(d.getDate() - (6 - i))
+  
+  // Get current week (Sunday to Saturday)
+  const today = new Date()
+  const todayStr = today.toISOString().slice(0,10)
+  const currentDayOfWeek = today.getDay() // 0 = Sunday, 6 = Saturday
+  
+  // Generate all days of current week (Sun-Sat)
+  const currentWeekDays = Array.from({length:7}, (_,i)=>{
+    const d = new Date(today.getFullYear(), today.getMonth(), today.getDate() - currentDayOfWeek + i)
     return d.toISOString().slice(0,10)
   })
+  
   const chartData = {}
-  last7Days.forEach(ds => {
+  currentWeekDays.forEach(ds => {
+    // Only show data for days up to and including today (not future days)
+    if (ds > todayStr) return
+    
     // build day entry
     const dayLogs = logs.filter(l => l.date === ds)
     if (!dayLogs.length) return
@@ -285,7 +296,7 @@ export default function Dashboard() {
             <div className="card-head">
               <span className="icon clock" />
               <span className="title">Daily Limit</span>
-        <button className="add-btn" aria-label="Add daily goal" title="Add daily goal" onClick={()=>setShowDailyModal(true)}>+</button>
+        <button className="add-btn" aria-label={dailyGoal === undefined ? "Add daily limit" : "Edit daily limit"} title={dailyGoal === undefined ? "Add daily limit" : "Edit daily limit"} onClick={()=>setShowDailyModal(true)}>{dailyGoal === undefined ? '+' : '✏️'}</button>
             </div>
             {dailyGoal === undefined ? (
               <p className="muted small" style={{margin:0}}>Create a new limit by clicking +</p>
@@ -294,7 +305,7 @@ export default function Dashboard() {
                 <ProgressBar value={dailyUsed || 0} max={dailyGoal} color="#d97706" exceeded={dailyUsed > dailyGoal} />
                 <div className="sub-row">
                   <span>{dailyUsed ? minutesLabel(dailyUsed) + ' used' : 'Log your hours'}</span>
-                  <span>{minutesLabel(dailyGoal)} goal</span>
+                  <span>{minutesLabel(dailyGoal)} limit</span>
                 </div>
               </>
             )}
@@ -302,17 +313,17 @@ export default function Dashboard() {
           <div className="metric-card" style={weeklyGoal !== undefined && weeklyUsed > weeklyGoal ? {backgroundColor: '#fee2e2'} : {}}>
             <div className="card-head">
               <span className="icon target" />
-              <span className="title">Weekly Goal</span>
-        <button className="add-btn" aria-label="Add weekly goal" title="Add weekly goal" onClick={()=>setShowWeeklyModal(true)}>+</button>
+              <span className="title">Weekly Limit</span>
+        <button className="add-btn" aria-label={weeklyGoal === undefined ? "Add weekly limit" : "Edit weekly limit"} title={weeklyGoal === undefined ? "Add weekly limit" : "Edit weekly limit"} onClick={()=>setShowWeeklyModal(true)}>{weeklyGoal === undefined ? '+' : '✏️'}</button>
             </div>
             {weeklyGoal === undefined ? (
-              <p className="muted small" style={{margin:0}}>Create a new goal by clicking +</p>
+              <p className="muted small" style={{margin:0}}>Create a new limit by clicking +</p>
             ) : (
               <>
                 <ProgressBar value={weeklyUsed || 0} max={weeklyGoal} color="#16a34a" exceeded={weeklyUsed > weeklyGoal} />
                 <div className="sub-row">
                   <span>{weeklyUsed ? minutesLabel(weeklyUsed) + ' used' : 'Log your hours'}</span>
-                  <span>{minutesLabel(weeklyGoal)} goal</span>
+                  <span>{minutesLabel(weeklyGoal)} limit</span>
                 </div>
               </>
             )}
@@ -343,7 +354,9 @@ export default function Dashboard() {
             <div className="top-app-card" style={{ background: 'linear-gradient(180deg,#fff,#fafcff)' }}>
               <div className="app-inner">
                 <div className="usage-main">{todayTotal !== undefined ? minutesLabel(todayTotal) : <span style={{fontSize:'12px'}}>Log your Total Screen Time</span>}</div>
-                <div className="usage-sub">Total Screen Time</div>
+                {todayTotal === undefined && (
+                  <div className="usage-sub">Click on the +Log Hours button on the bottom right to log your hours</div>
+                )}
               </div>
             </div>
             {topApps.map(app => (
@@ -377,7 +390,7 @@ export default function Dashboard() {
       </div>
       {showDailyModal && (
         <GoalModal
-          title="Create or Edit your Daily Limit"
+          title={dailyGoal === undefined ? "Create your Daily Limit" : "Edit your Daily Limit"}
           initialMinutes={dailyGoal}
           onClose={()=>setShowDailyModal(false)}
           onSave={(mins)=>{ setDailyGoal(mins); localStorage.setItem(storageKey('daily_goal'), String(mins)); setShowDailyModal(false) }}
@@ -385,7 +398,7 @@ export default function Dashboard() {
       )}
       {showWeeklyModal && (
         <GoalModal
-          title="Create or Edit your Weekly Goal"
+          title={weeklyGoal === undefined ? "Create your Weekly Limit" : "Edit your Weekly Limit"}
           initialMinutes={weeklyGoal}
           onClose={()=>setShowWeeklyModal(false)}
           onSave={(mins)=>{ setWeeklyGoal(mins); localStorage.setItem(storageKey('weekly_goal'), String(mins)); setShowWeeklyModal(false) }}
