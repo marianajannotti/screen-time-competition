@@ -72,7 +72,14 @@ export default function Profile() {
 
   function openBadge(badge, event) {
     triggerRef.current = event?.currentTarget
-    setActiveBadge(badge)
+    // Merge badge data with earned date if available
+    const earnedDate = earnedBadgeMap.get(badge.name)
+    const badgeWithDate = {
+      ...badge,
+      earned_at: earnedDate || null
+    }
+    console.log('Opening badge:', badgeWithDate)
+    setActiveBadge(badgeWithDate)
     setModalOpen(true)
   }
   function closeBadge() {
@@ -97,6 +104,7 @@ export default function Profile() {
           user?.id ? badgesApi.getUserBadges(user.id) : Promise.resolve([])
         ])
         
+        console.log('User badges data:', userBadgeData)
         setAllBadges(badges)
         setUserBadges(userBadgeData)
       } catch (error) {
@@ -124,7 +132,7 @@ export default function Profile() {
   const earnedBadgeMap = useMemo(() => {
     const map = new Map()
     userBadges.forEach(badge => {
-      map.set(badge.name, badge.earnedAt)
+      map.set(badge.name, badge.earned_at)
     })
     return map
   }, [userBadges])
@@ -240,7 +248,7 @@ export default function Profile() {
         )}
 
         {/* Locked */}
-        <div className="badges-header badges-header-locked">
+        <div className="badges-header badges-header-locked" style={{ marginTop: '32px' }}>
           <h3 className="badges-subtitle">Locked</h3>
         </div>
         <div className="badges-grid">
@@ -286,14 +294,34 @@ export default function Profile() {
       {modalOpen && activeBadge && (
         <div className="modal-backdrop" onClick={closeBadge} aria-label="Close badge details">
           <div 
-            className="modal" 
+            className="modal badge-modal" 
             onClick={(e) => e.stopPropagation()} 
             role="dialog" 
             aria-modal="true" 
             aria-labelledby="badge-modal-title"
           >
+            <div className="badge-modal-icon">
+              <img 
+                src={activeBadge.earned_at ? getBadgeIconPath(activeBadge.name) : lockIcon}
+                alt={activeBadge.name}
+                onError={(e) => {
+                  // Fallback to emoji if icon fails to load
+                  e.target.style.display = 'none'
+                  e.target.parentElement.innerHTML = `<span style="font-size: 80px;">${BADGE_ICONS[activeBadge.badge_type] || '🏅'}</span>`
+                }}
+                style={{ width: '80px', height: '80px', objectFit: 'contain' }}
+              />
+            </div>
             <h3 id="badge-modal-title" className="modal-title">{activeBadge.name}</h3>
-            <p className="muted modal-desc">{activeBadge.desc}</p>
+            <p className="muted modal-desc">{activeBadge.description}</p>
+            {console.log('activeBadge.earned_at:', activeBadge.earned_at)}
+            {console.log('formatEarnedDate result:', activeBadge.earned_at ? formatEarnedDate(activeBadge.earned_at) : 'no earned_at')}
+            {activeBadge.earned_at && (
+              <div className="badge-earned-date">
+                <span className="earned-label">Earned</span>
+                <span className="earned-value">{formatEarnedDate(activeBadge.earned_at)}</span>
+              </div>
+            )}
             <div className="modal-actions">
               <button type="button" className="btn-ghost" onClick={closeBadge}>Close</button>
             </div>
