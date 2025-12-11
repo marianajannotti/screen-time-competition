@@ -5,7 +5,7 @@ from datetime import date, timedelta
 
 from backend import create_app
 from backend.database import db
-from backend.models import Challenge, ChallengeParticipant, User, ScreenTimeLog
+from backend.models import Challenge, ChallengeParticipant, User
 
 
 class ChallengesAPITestCase(unittest.TestCase):
