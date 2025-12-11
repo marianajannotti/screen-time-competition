@@ -11,7 +11,7 @@ This project was developed and tested on Windows (PowerShell). All command examp
 
 ## Install dependencies
 
-From the project root (`d:\screen-time-competition\offy-front`) run:
+From the frontend directory run:
 
 ```powershell
 # install runtime/dev deps from package.json

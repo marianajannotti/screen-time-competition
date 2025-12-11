@@ -29,7 +29,7 @@ A web application for friendly screen time competition - track daily usage, set 
    pip install -r requirements.txt
    
    # Frontend
-   cd offy-front && npm install && cd ..
+   cd frontend && npm install && cd ..
    ```
 
 4. **Create `.env` file in project root:**
@@ -72,7 +72,7 @@ python run_backend.py
 
 **Terminal 2 - Frontend:**
 ```bash
-cd offy-front
+cd frontend
 npm run dev
 ```
 
