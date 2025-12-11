@@ -142,11 +142,16 @@ class ScreenTimeService:
             (Challenge.target_app == app_name) | (Challenge.target_app == '__TOTAL__')
         ).options(selectinload(Challenge.participants)).all()
         
+        # Bulk fetch all relevant ChallengeParticipant records for this user and these challenges
+        challenge_ids = [challenge.id for challenge in active_challenges]
+        participants = ChallengeParticipant.query.filter(
+            ChallengeParticipant.challenge_id.in_(challenge_ids),
+            ChallengeParticipant.user_id == user_id
+        ).all()
+        participant_map = {p.challenge_id: p for p in participants}
+        
         for challenge in active_challenges:
-            participant = ChallengeParticipant.query.filter_by(
-                challenge_id=challenge.id,
-                user_id=user_id
-            ).first()
+            participant = participant_map.get(challenge.id)
             if not participant:
                 continue
             
