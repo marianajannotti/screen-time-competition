@@ -170,7 +170,7 @@ class ChallengesAPITestCase(unittest.TestCase):
 
         payload = {
             "name": "Past Challenge",
-            "target_app": "Total",
+            "target_app": "__TOTAL__",
             "target_minutes": 180,
             "start_date": yesterday.isoformat(),
             "end_date": end.isoformat(),
