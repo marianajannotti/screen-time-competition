@@ -321,9 +321,6 @@ def leave_challenge(challenge_id):
     Returns:
         JSON response with success or error message.
     """
-    # Enforce JSON Content-Type for consistency with other POST endpoints
-    if not request.is_json:
-        return jsonify({'error': 'Content-Type must be application/json'}), 415
     try:
         challenge = Challenge.query.get_or_404(challenge_id)
         
@@ -413,16 +410,24 @@ def _check_and_complete_challenge(challenge):
             challenge_id=challenge.id
         ).all()
         # Assign ranks and determine winners (inline logic)
+        # Only include participants who logged at least once (days_logged > 0)
         active_participants = [p for p in participants if p.days_logged > 0]
         if active_participants:
+            # Calculate average daily screen time for each participant
+            # Safe from division by zero since we filtered for days_logged > 0
+            participant_averages = [
+                (p, p.total_screen_time_minutes / p.days_logged) 
+                for p in active_participants
+            ]
             # Sort by average daily screen time (lowest wins)
-            active_participants.sort(key=lambda p: p.total_screen_time_minutes / p.days_logged)
+            participant_averages.sort(key=lambda x: x[1])
+            
             # Find the minimum average daily screen time
-            min_avg = active_participants[0].total_screen_time_minutes / active_participants[0].days_logged
+            min_avg = participant_averages[0][1]
+            
             # Assign ranks and mark completed
-            for rank, participant in enumerate(active_participants, start=1):
+            for rank, (participant, avg) in enumerate(participant_averages, start=1):
                 participant.final_rank = rank
-                avg = participant.total_screen_time_minutes / participant.days_logged
                 participant.is_winner = (avg == min_avg)
                 participant.challenge_completed = True
         # Mark challenge as completed

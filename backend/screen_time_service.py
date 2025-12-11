@@ -142,53 +142,62 @@ class ScreenTimeService:
             (Challenge.target_app == app_name) | (Challenge.target_app == '__TOTAL__')
         ).options(selectinload(Challenge.participants)).all()
         
-        # Bulk fetch all relevant ChallengeParticipant records for this user and these challenges
-        challenge_ids = [challenge.id for challenge in active_challenges]
-        participants = ChallengeParticipant.query.filter(
-            ChallengeParticipant.challenge_id.in_(challenge_ids),
-            ChallengeParticipant.user_id == user_id
-        ).all()
-        participant_map = {p.challenge_id: p for p in participants}
-        
-        for challenge in active_challenges:
-            participant = participant_map.get(challenge.id)
-            if not participant:
-                continue
+        # Fetch all relevant screen time logs once for all challenges
+        # Get the min/max date range across all challenges
+        if active_challenges:
+            # Bulk fetch all relevant ChallengeParticipant records for this user and these challenges
+            challenge_ids = [challenge.id for challenge in active_challenges]
+            participants = ChallengeParticipant.query.filter(
+                ChallengeParticipant.challenge_id.in_(challenge_ids),
+                ChallengeParticipant.user_id == user_id
+            ).all()
+            participant_map = {p.challenge_id: p for p in participants}
             
-            # Build base query for this user's logs within the challenge date range
-            base_query = ScreenTimeLog.query.filter(
+            min_start = min(c.start_date for c in active_challenges)
+            max_end = max(c.end_date for c in active_challenges)
+            
+            # Fetch all logs in this date range in a single query
+            all_logs = ScreenTimeLog.query.filter(
                 ScreenTimeLog.user_id == user_id,
-                ScreenTimeLog.date >= challenge.start_date,
-                ScreenTimeLog.date <= challenge.end_date
-            )
+                ScreenTimeLog.date >= min_start,
+                ScreenTimeLog.date <= max_end
+            ).all()
             
-            # Filter by app if not tracking total screen time
-            if challenge.target_app != '__TOTAL__':
-                base_query = base_query.filter(ScreenTimeLog.app_name == challenge.target_app)
-            
-            # Count unique days logged
-            days_logged = base_query.with_entities(
-                func.count(func.distinct(ScreenTimeLog.date))
-            ).scalar() or 0
-            
-            # Sum total minutes
-            total_minutes = base_query.with_entities(
-                func.sum(ScreenTimeLog.screen_time_minutes)
-            ).scalar() or 0
-            
-            # Calculate days passed/failed by grouping by date
-            day_totals = base_query.with_entities(
-                ScreenTimeLog.date,
-                func.sum(ScreenTimeLog.screen_time_minutes)
-            ).group_by(ScreenTimeLog.date).all()
-            
-            days_passed = sum(1 for _, total in day_totals if total <= challenge.target_minutes)
-            
-            # Update participant stats
-            participant.days_logged = days_logged
-            participant.total_screen_time_minutes = total_minutes
-            participant.days_passed = days_passed
-            participant.days_failed = days_logged - days_passed
+            # Process each challenge using the pre-fetched logs
+            for challenge in active_challenges:
+                participant = participant_map.get(challenge.id)
+                if not participant:
+                    continue
+                
+                # Filter logs for this specific challenge in Python
+                relevant_logs = [
+                    log for log in all_logs
+                    if challenge.start_date <= log.date <= challenge.end_date
+                    and (challenge.target_app == '__TOTAL__' or log.app_name == challenge.target_app)
+                ]
+                
+                # Calculate stats from the filtered logs
+                if relevant_logs:
+                    # Group by date and sum minutes per day
+                    day_totals = {}
+                    for log in relevant_logs:
+                        day_totals[log.date] = day_totals.get(log.date, 0) + log.screen_time_minutes
+                    
+                    days_logged = len(day_totals)
+                    total_minutes = sum(day_totals.values())
+                    days_passed = sum(1 for daily_total in day_totals.values() if daily_total <= challenge.target_minutes)
+                    days_failed = days_logged - days_passed
+                else:
+                    days_logged = 0
+                    total_minutes = 0
+                    days_passed = 0
+                    days_failed = 0
+                
+                # Update participant stats
+                participant.days_logged = days_logged
+                participant.total_screen_time_minutes = total_minutes
+                participant.days_passed = days_passed
+                participant.days_failed = days_failed
             
         db.session.commit()
         try:
