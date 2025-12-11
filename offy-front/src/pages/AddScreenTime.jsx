@@ -1,12 +1,13 @@
 import React, { useEffect, useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
-import { addScreenTime as apiAddScreenTime, getMonthlyLogs, saveMonthlyLogs, getChallenges } from '../api/mockApi'
+import { getChallenges } from '../api/mockApi'
+import { useNavigate } from 'react-router-dom'
+import { addScreenTimeEntry } from '../api/screenTimeApi'
 
 // normalize user id shape
 function getUserId(u) {
   return u?.user_id ?? u?.id ?? u?.userId ?? u?.uid ?? null
 }
-import { useNavigate } from 'react-router-dom'
 
 export default function AddScreenTime() {
   const { user } = useAuth()
@@ -16,8 +17,6 @@ export default function AddScreenTime() {
   const [minutes, setMinutes] = useState(15)
   const [appName, setAppName] = useState('')
   const [message, setMessage] = useState(null)
-  const [pendingMinutes, setPendingMinutes] = useState(null)
-  const [dupTarget, setDupTarget] = useState(null) // { app, date }
   const [challenges, setChallenges] = useState([])
   const [challengeId, setChallengeId] = useState('')
   const nav = useNavigate()
@@ -52,60 +51,50 @@ export default function AddScreenTime() {
     e.preventDefault()
     const uid = getUserId(user)
     if (!uid) return
+    
     // Guard against future dates (should be impossible with max constraint but double-check)
     const todayStr = new Date().toISOString().slice(0,10)
     if (date > todayStr) {
       setMessage('Date cannot be in the future')
       return
     }
+    
     const totalMinutes = (Number(hours) || 0) * 60 + (Number(minutes) || 0)
-    // Use mock API helpers for monthly logs (keeps leaderboard utilities consistent)
-    const { logs: existing } = await getMonthlyLogs(uid)
-    const targetApp = appName || '__TOTAL__'
-    const dupIndex = existing.findIndex((l) => l.date === date && l.app === targetApp)
-    if (dupIndex !== -1) {
-      setDupTarget({ app: targetApp, date })
-      setPendingMinutes(totalMinutes)
+    
+    if (totalMinutes <= 0) {
+      setMessage('Screen time must be greater than 0 minutes')
       return
     }
-    // Save new entry to monthly logs and also add a screenTime log entry
-    existing.push({ app: targetApp, date, minutes: totalMinutes })
-    await saveMonthlyLogs(uid, existing)
+    
     try {
-      // include challenge_id if selected so entries can be traced to challenges
-      const payload = { user_id: uid, date, minutes: totalMinutes }
-      if (challengeId) payload.challenge_id = challengeId
-      await apiAddScreenTime(payload)
-    } catch (err) {
-      // non-fatal for monthly logging; ignore
+      // Send to backend API - backend expects hours and minutes separately
+      const data = {
+        date: date,
+        hours: Number(hours) || 0,
+        minutes: Number(minutes) || 0,
+      }
+      
+      // Only include app_name if it's not the total screen time option
+      if (appName) {
+        data.app_name = appName
+      }
+      
+      // Include challenge_id if selected so entries can be traced to challenges
+      if (challengeId) {
+        data.challenge_id = challengeId
+      }
+      
+      await addScreenTimeEntry(data)
+      
+      setMessage('Saved successfully!')
+      setTimeout(close, 700)
+    } catch (error) {
+      console.error('Error saving screen time:', error)
+      setMessage(error.message || 'Failed to save entry')
     }
-    setMessage('Saved')
-    setTimeout(close, 700)
   }
 
-  async function resolveDuplicate(replace) {
-    const uid = getUserId(user)
-    if (!dupTarget || !uid) return
-    if (replace) {
-      const { logs: arr } = await getMonthlyLogs(uid)
-      const idx = arr.findIndex((l) => l.date === dupTarget.date && l.app === dupTarget.app)
-      if (idx !== -1) {
-        arr[idx].minutes = pendingMinutes
-        await saveMonthlyLogs(uid, arr)
-        try {
-          const payload = { user_id: uid, date: dupTarget.date, minutes: pendingMinutes }
-          if (challengeId) payload.challenge_id = challengeId
-          await apiAddScreenTime(payload)
-        } catch (err) {
-          // ignore
-        }
-      }
-    }
-    setDupTarget(null)
-    setPendingMinutes(null)
-    setMessage(replace ? 'Updated' : 'Kept previous')
-    setTimeout(close, 700)
-  }
+  // Note: Backend automatically updates existing entries for the same app/date
 
   if (!show) return null
 
@@ -172,19 +161,15 @@ export default function AddScreenTime() {
             <button type="button" className="btn-ghost" onClick={close}>Cancel</button>
           </div>
 
-          {message && <div style={{color:'#0b6'}}> {message} </div>}
-        </form>
-        {dupTarget && (
-          <div className="modal" style={{marginTop:20,background:'#fffbe6'}}>
-            <h4 style={{margin:'0 0 8px'}}>Entry already exists</h4>
-            <p style={{margin:'0 0 12px',fontSize:14}}>You already logged {dupTarget.app === '__TOTAL__' ? 'Total Screen Time' : dupTarget.app} for {dupTarget.date}. Replace previous value or keep existing?</p>
-            <div style={{display:'flex',gap:10}}>
-              <button type="button" className="btn-primary" onClick={()=>resolveDuplicate(true)}>Replace</button>
-              <button type="button" className="btn-ghost" onClick={()=>resolveDuplicate(false)}>Keep Previous</button>
-              <button type="button" className="btn-ghost" onClick={()=>{ setDupTarget(null); setPendingMinutes(null); }}>Cancel</button>
+          {message && (
+            <div style={{
+              color: message.includes('Failed') || message.includes('cannot') || message.includes('must be greater') ? '#c33' : '#0b6',
+              marginTop: 8
+            }}>
+              {message}
             </div>
-          </div>
-        )}
+          )}
+        </form>
       </div>
     </div>
   )

@@ -101,14 +101,18 @@ class ScreenTimeService:
     @staticmethod
     def create_entry(user_id: int, data: Dict) -> ScreenTimeLog:
         """
-        Create a new screen time entry and update all relevant challenge stats for the user.
+        Create or update a screen time entry and update all relevant challenge stats for the user.
+
+        If an entry already exists for the same user, app, and date,
+        it will be updated with the new time. Otherwise, a new entry
+        is created.
 
         Args:
             user_id (int): ID of the user creating the entry.
             data (dict): Raw data from the request.
 
         Returns:
-            ScreenTimeLog: The created log entry.
+            ScreenTimeLog: The created or updated log entry.
 
         Raises:
             ValidationError: If data is invalid.
@@ -118,16 +122,50 @@ class ScreenTimeService:
             - Triggers badge logic to check and award badges if criteria are met.
             - Commits all changes to the database.
         """
-        app_name, total_minutes, entry_date = ScreenTimeService._validate_payload(data)
+        validated = ScreenTimeService._validate_payload(data)
+        app_name, total_minutes, entry_date = validated
 
-        new_log = ScreenTimeLog(
+        # Check for existing entry with same user_id, app_name, and date
+        existing_log = ScreenTimeLog.query.filter_by(
             user_id=user_id,
             app_name=app_name,
-            date=entry_date,
-            screen_time_minutes=total_minutes,
-        )
-        db.session.add(new_log)
-        db.session.commit()
+            date=entry_date
+        ).first()
+
+        # Validate total screen time consistency
+        if app_name == "Total":
+            # Get sum of all individual app times for this date
+            app_logs = ScreenTimeLog.query.filter_by(
+                user_id=user_id,
+                date=entry_date
+            ).filter(ScreenTimeLog.app_name != "Total").all()
+            
+            sum_of_apps = sum(log.screen_time_minutes for log in app_logs)
+            
+            if total_minutes < sum_of_apps:
+                raise ValidationError(
+                    f"Total screen time ({total_minutes // 60}h "
+                    f"{total_minutes % 60}m) cannot be less than the sum "
+                    f"of individual app times ({sum_of_apps // 60}h "
+                    f"{sum_of_apps % 60}m)."
+                )
+
+        if existing_log:
+            # Update existing entry
+            existing_log.screen_time_minutes = total_minutes
+            db.session.commit()
+            log_to_return = existing_log
+        else:
+            # Create new entry
+            new_log = ScreenTimeLog(
+                user_id=user_id,
+                app_name=app_name,
+                date=entry_date,
+                screen_time_minutes=total_minutes,
+            )
+            db.session.add(new_log)
+            db.session.commit()
+            log_to_return = new_log
 
         # --- Challenge stats update logic ---
         from .models import Challenge, ChallengeParticipant
@@ -200,6 +238,8 @@ class ScreenTimeService:
                 participant.days_failed = days_failed
             
         db.session.commit()
+
+        # Check and award badges after creating/updating a screen time entry
         try:
             from .badge_logic import BadgeLogic
         except ImportError as e:
@@ -209,12 +249,14 @@ class ScreenTimeService:
             try:
                 awarded_badges = BadgeLogic.check_and_award_badges(user_id)
                 if awarded_badges:
-                    logger.info(f"Awarded badges to user {user_id}: {awarded_badges}")
+                    logger.info(
+                        f"Awarded badges to user {user_id}: {awarded_badges}"
+                    )
             except Exception as e:
                 # Don't fail the screen time entry if badge logic fails
                 logger.error(f"Badge logic error for user {user_id}: {e}")
 
-        return new_log
+        return log_to_return
 
     @staticmethod
     def get_entries(
@@ -242,7 +284,9 @@ class ScreenTimeService:
             ValidationError: If date strings are invalid.
         """
         date_filter = ScreenTimeService._parse_date(date_str, "date")
-        start_date = ScreenTimeService._parse_date(start_date_str, "start_date")
+        start_date = ScreenTimeService._parse_date(
+            start_date_str, "start_date"
+        )
         end_date = ScreenTimeService._parse_date(end_date_str, "end_date")
 
         query = ScreenTimeLog.query.filter_by(user_id=user_id)
