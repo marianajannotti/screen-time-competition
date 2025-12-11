@@ -26,7 +26,7 @@ export default function Header() {
 
   const Brand = (
     <div className="brand" onClick={() => nav('/dashboard')} style={{ cursor: 'pointer' }}>
-      <div className="dot">O</div>
+      <img src="/logo.svg" alt="Offy" style={{ width: '32px', height: '32px' }} />
       <div>Offy</div>
     </div>
   )
