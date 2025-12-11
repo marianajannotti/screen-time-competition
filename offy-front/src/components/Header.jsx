@@ -26,7 +26,7 @@ export default function Header() {
 
   const Brand = (
     <div className="brand" onClick={() => nav('/dashboard')} style={{ cursor: 'pointer' }}>
-      <div className="dot">O</div>
+      <img src="/logo.svg" alt="Offy" style={{ width: '32px', height: '32px' }} />
       <div>Offy</div>
     </div>
   )
@@ -36,6 +36,7 @@ export default function Header() {
     <nav className="nav-links">
       <NavLink to="/dashboard" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>🏠 Home</NavLink>
       <NavLink to="/leaderboard" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>🏆 Leaderboard</NavLink>
+      <NavLink to="/friends" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>👥 Friends</NavLink>
       <button aria-label="Open profile" onClick={() => nav('/profile')} className={`header-avatar ${location.pathname.startsWith('/profile') ? 'active' : ''}`}>
         {initials}
       </button>

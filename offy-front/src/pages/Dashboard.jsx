@@ -1,15 +1,23 @@
 import React, { useMemo, useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { getScreenTimeEntries } from '../api/screenTimeApi'
+import { getChallenges } from '../api/mockApi'
 import { minutesLabel } from '../utils/timeFormatters'
 import ProgressBar from '../components/dashboard/ProgressBar'
 import WeeklyChart from '../components/dashboard/WeeklyChart'
 import GoalModal from '../components/dashboard/GoalModal'
+import ChallengeRow from '../components/dashboard/ChallengeRow'
+import ChallengeModal from '../components/dashboard/ChallengeModal'
+
+// Normalize user id from different possible shapes
+function getUserId(u) {
+  return u?.user_id ?? u?.id ?? u?.userId ?? u?.uid ?? null
+}
 
 export default function Dashboard() {
   const { user } = useAuth()
   // Persist goals in localStorage keyed per user
-  const storageKey = (k) => `offy_${user?.user_id || 'anon'}_${k}`
+  const storageKey = (k) => `offy_${getUserId(user) || 'anon'}_${k}`
   const [dailyGoal, setDailyGoal] = useState(() => {
     const v = localStorage.getItem(storageKey('daily_goal'))
     return v ? Number(v) : undefined
@@ -20,6 +28,8 @@ export default function Dashboard() {
   })
   const [showDailyModal, setShowDailyModal] = useState(false)
   const [showWeeklyModal, setShowWeeklyModal] = useState(false)
+  const [showChallengeModal, setShowChallengeModal] = useState(false)
+  const [challenges, setChallenges] = useState([])
   const [logs, setLogs] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -75,6 +85,23 @@ export default function Dashboard() {
     }
 
     fetchLogs()
+  }, [user])
+
+  // Fetch user's challenges
+  useEffect(() => {
+    let mounted = true
+    if (!user) { setChallenges([]); return }
+    ;(async () => {
+      try {
+        const res = await getChallenges(getUserId(user))
+        if (!mounted) return
+        setChallenges(Array.isArray(res.challenges) ? res.challenges : [])
+      } catch (err) {
+        if (!mounted) return
+        setChallenges([])
+      }
+    })()
+    return () => { mounted = false }
   }, [user])
 
   const todayApps = useMemo(() => {
@@ -218,7 +245,19 @@ export default function Dashboard() {
               <span className="icon trophy" />
               <span className="title">Challenges</span>
             </div>
-            <p className="muted" style={{margin:0}}>This feature is coming soon.</p>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:8}}>
+              <div style={{fontSize:14,color:'#333'}}>Your active challenges</div>
+              <button className="add-btn" aria-label="Create challenge" title="Create challenge" onClick={()=>setShowChallengeModal(true)}>+</button>
+            </div>
+            {challenges.length === 0 ? (
+              <p className="muted" style={{margin:0,marginTop:8}}>Create a challenge to get started</p>
+            ) : (
+              <div style={{display:'grid',gap:8,marginTop:8}}>
+                {challenges.map(c => (
+                  <ChallengeRow key={c.challenge_id} challenge={c} currentUser={user} />
+                ))}
+              </div>
+            )}
           </div>
         </aside>
 
@@ -273,6 +312,20 @@ export default function Dashboard() {
           initialMinutes={weeklyGoal}
           onClose={()=>setShowWeeklyModal(false)}
           onSave={(mins)=>{ setWeeklyGoal(mins); localStorage.setItem(storageKey('weekly_goal'), String(mins)); setShowWeeklyModal(false) }}
+        />
+      )}
+      {showChallengeModal && (
+        <ChallengeModal
+          currentUser={user}
+          onClose={()=>setShowChallengeModal(false)}
+            onCreate={async ()=>{
+            try {
+              const res = await getChallenges(getUserId(user))
+              setChallenges(Array.isArray(res.challenges) ? res.challenges : [])
+            } catch {
+              setChallenges([])
+            }
+          }}
         />
       )}
       <div className="corner-action">
