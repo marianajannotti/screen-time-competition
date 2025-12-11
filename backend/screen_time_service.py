@@ -155,33 +155,20 @@ class ScreenTimeService:
                 base_query = base_query.filter_by(app_name=challenge.target_app)
             
             # Count unique days logged
-            days_logged = db.session.query(
+            days_logged = base_query.with_entities(
                 func.count(func.distinct(ScreenTimeLog.date))
-            ).filter(
-                ScreenTimeLog.user_id == user_id,
-                ScreenTimeLog.app_name == challenge.target_app if challenge.target_app != '__TOTAL__' else True
             ).scalar() or 0
             
             # Sum total minutes
-            total_minutes_query = db.session.query(
+            total_minutes = base_query.with_entities(
                 func.sum(ScreenTimeLog.screen_time_minutes)
-            ).filter(ScreenTimeLog.user_id == user_id)
-            if challenge.target_app != '__TOTAL__':
-                total_minutes_query = total_minutes_query.filter(
-                    ScreenTimeLog.app_name == challenge.target_app
-                )
-            total_minutes = total_minutes_query.scalar() or 0
+            ).scalar() or 0
             
             # Calculate days passed/failed by grouping by date
-            day_totals_query = db.session.query(
+            day_totals = base_query.with_entities(
                 ScreenTimeLog.date,
                 func.sum(ScreenTimeLog.screen_time_minutes)
-            ).filter(ScreenTimeLog.user_id == user_id)
-            if challenge.target_app != '__TOTAL__':
-                day_totals_query = day_totals_query.filter(
-                    ScreenTimeLog.app_name == challenge.target_app
-                )
-            day_totals = day_totals_query.group_by(ScreenTimeLog.date).all()
+            ).group_by(ScreenTimeLog.date).all()
             
             days_passed = sum(1 for _, total in day_totals if total <= challenge.target_minutes)
             
