@@ -3,6 +3,7 @@
 from flask import Blueprint, request, jsonify, make_response
 from flask_login import login_required, current_user
 from datetime import datetime, date
+from sqlalchemy.orm import joinedload
 
 from .database import db
 from .models import Challenge, ChallengeParticipant, User
@@ -191,7 +192,8 @@ def get_leaderboard(challenge_id):
         JSON response with challenge info, owner username, and leaderboard list.
     """
     
-    challenge = Challenge.query.get_or_404(challenge_id)
+    # Eager load owner to avoid N+1 query
+    challenge = Challenge.query.options(joinedload(Challenge.owner)).get_or_404(challenge_id)
     
     # Check if user is a participant
     user_participation = ChallengeParticipant.query.filter_by(
@@ -233,12 +235,9 @@ def get_leaderboard(challenge_id):
     # Sort by average daily screen time (lowest first)
     leaderboard.sort(key=lambda x: x['average_daily_minutes'])
     
-    # Get owner info
-    owner = User.query.get(challenge.owner_id)
-    
     response = make_response(jsonify({
         'challenge': challenge.to_dict(),
-        'owner_username': owner.username if owner else 'Unknown',
+        'owner_username': challenge.owner.username if challenge.owner else 'Unknown',
         'leaderboard': leaderboard
     }), 200)
     return add_api_headers(response)
