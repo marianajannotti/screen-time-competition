@@ -322,6 +322,9 @@ def leave_challenge(challenge_id):
     Returns:
         JSON response with success or error message.
     """
+    # Enforce JSON Content-Type for consistency with other POST endpoints
+    if not request.is_json:
+        return jsonify({'error': 'Content-Type must be application/json'}), 415
     try:
         challenge = Challenge.query.get_or_404(challenge_id)
         
