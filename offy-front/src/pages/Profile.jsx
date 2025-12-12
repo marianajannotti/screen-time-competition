@@ -125,7 +125,7 @@ export default function Profile() {
 
     loadStats()
     return () => { cancelled = true }
-  }, [user])
+  }, [user?.id, user?.streak_count])
 
   // Handle Escape key to close modal
   useEffect(() => {
