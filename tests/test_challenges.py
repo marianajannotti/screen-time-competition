@@ -97,7 +97,7 @@ class ChallengesAPITestCase(unittest.TestCase):
         self.assertEqual(data["challenge"]["owner_id"], self.user1.id)
 
         # Verify participants were added (owner + 2 invited)
-        challenge_id = data["challenge"]["id"]
+        challenge_id = data["challenge"]["challenge_id"]
         participants = ChallengeParticipant.query.filter_by(challenge_id=challenge_id).all()
         self.assertEqual(len(participants), 3)
 
@@ -235,7 +235,7 @@ class ChallengesAPITestCase(unittest.TestCase):
             "end_date": end.isoformat(),
         }
         response = self.client.post("/api/challenges", json=payload)
-        challenge_id = response.get_json()["challenge"]["id"]
+        challenge_id = response.get_json()["challenge"]["challenge_id"]
 
         # Delete it
         self.client.delete(f"/api/challenges/{challenge_id}")
@@ -261,14 +261,14 @@ class ChallengesAPITestCase(unittest.TestCase):
             "end_date": end.isoformat(),
         }
         response = self.client.post("/api/challenges", json=payload)
-        challenge_id = response.get_json()["challenge"]["id"]
+        challenge_id = response.get_json()["challenge"]["challenge_id"]
 
         # Retrieve the challenge
         response = self.client.get(f"/api/challenges/{challenge_id}")
         self.assertEqual(response.status_code, 200)
 
         data = response.get_json()
-        self.assertEqual(data["challenge"]["id"], challenge_id)
+        self.assertEqual(data["challenge"]["challenge_id"], challenge_id)
         self.assertEqual(data["challenge"]["name"], "Specific Challenge")
         self.assertIn("user_stats", data["challenge"])
 
@@ -287,7 +287,7 @@ class ChallengesAPITestCase(unittest.TestCase):
             "end_date": end.isoformat(),
         }
         response = self.client.post("/api/challenges", json=payload)
-        challenge_id = response.get_json()["challenge"]["id"]
+        challenge_id = response.get_json()["challenge"]["challenge_id"]
 
         # User2 tries to view it
         response = self._get_client_for_user(2).get(f"/api/challenges/{challenge_id}")
@@ -317,7 +317,7 @@ class ChallengesAPITestCase(unittest.TestCase):
             "invited_user_ids": [self.user2.id, self.user3.id]
         }
         response = self.client.post("/api/challenges", json=payload)
-        challenge_id = response.get_json()["challenge"]["id"]
+        challenge_id = response.get_json()["challenge"]["challenge_id"]
 
         # Add some screen time logs for participants
         log_payload1 = {
@@ -370,7 +370,7 @@ class ChallengesAPITestCase(unittest.TestCase):
             "end_date": end.isoformat(),
         }
         response = self.client.post("/api/challenges", json=payload)
-        challenge_id = response.get_json()["challenge"]["id"]
+        challenge_id = response.get_json()["challenge"]["challenge_id"]
 
         # User2 tries to view leaderboard
         response = self._get_client_for_user(2).get(f"/api/challenges/{challenge_id}/leaderboard")
@@ -393,7 +393,7 @@ class ChallengesAPITestCase(unittest.TestCase):
             "end_date": end.isoformat(),
         }
         response = self.client.post("/api/challenges", json=payload)
-        challenge_id = response.get_json()["challenge"]["id"]
+        challenge_id = response.get_json()["challenge"]["challenge_id"]
 
         # Invite users
         invite_payload = {
@@ -425,7 +425,7 @@ class ChallengesAPITestCase(unittest.TestCase):
             "invited_user_ids": [self.user2.id]
         }
         response = self.client.post("/api/challenges", json=payload)
-        challenge_id = response.get_json()["challenge"]["id"]
+        challenge_id = response.get_json()["challenge"]["challenge_id"]
 
         # User2 tries to invite user3
         invite_payload = {
@@ -455,7 +455,7 @@ class ChallengesAPITestCase(unittest.TestCase):
         db.session.flush()
 
         participant = ChallengeParticipant(
-            challenge_id=challenge.id,
+            challenge_id=challenge.challenge_id,
             user_id=self.user1.id
         )
         db.session.add(participant)
@@ -465,7 +465,7 @@ class ChallengesAPITestCase(unittest.TestCase):
         invite_payload = {
             "user_ids": [self.user2.id]
         }
-        response = self.client.post(f"/api/challenges/{challenge.id}/invite", json=invite_payload)
+        response = self.client.post(f"/api/challenges/{challenge.challenge_id}/invite", json=invite_payload)
         self.assertEqual(response.status_code, 400)
         self.assertIn("Cannot invite to completed", response.get_json()["error"])
 
@@ -485,7 +485,7 @@ class ChallengesAPITestCase(unittest.TestCase):
             "invited_user_ids": [self.user2.id]
         }
         response = self.client.post("/api/challenges", json=payload)
-        challenge_id = response.get_json()["challenge"]["id"]
+        challenge_id = response.get_json()["challenge"]["challenge_id"]
 
         # Try to invite user2 again
         invite_payload = {
@@ -515,7 +515,7 @@ class ChallengesAPITestCase(unittest.TestCase):
             "invited_user_ids": [self.user2.id]
         }
         response = self.client.post("/api/challenges", json=payload)
-        challenge_id = response.get_json()["challenge"]["id"]
+        challenge_id = response.get_json()["challenge"]["challenge_id"]
 
         # User2 leaves
         response = self._get_client_for_user(2).post(f"/api/challenges/{challenge_id}/leave")
@@ -543,7 +543,7 @@ class ChallengesAPITestCase(unittest.TestCase):
             "end_date": end.isoformat(),
         }
         response = self.client.post("/api/challenges", json=payload)
-        challenge_id = response.get_json()["challenge"]["id"]
+        challenge_id = response.get_json()["challenge"]["challenge_id"]
 
         # Owner tries to leave
         response = self.client.post(f"/api/challenges/{challenge_id}/leave")
@@ -565,7 +565,7 @@ class ChallengesAPITestCase(unittest.TestCase):
             "end_date": end.isoformat(),
         }
         response = self.client.post("/api/challenges", json=payload)
-        challenge_id = response.get_json()["challenge"]["id"]
+        challenge_id = response.get_json()["challenge"]["challenge_id"]
 
         # User2 tries to leave
         response = self._get_client_for_user(2).post(f"/api/challenges/{challenge_id}/leave")
@@ -589,7 +589,7 @@ class ChallengesAPITestCase(unittest.TestCase):
             "end_date": end.isoformat(),
         }
         response = self.client.post("/api/challenges", json=payload)
-        challenge_id = response.get_json()["challenge"]["id"]
+        challenge_id = response.get_json()["challenge"]["challenge_id"]
 
         # Delete it
         response = self.client.delete(f"/api/challenges/{challenge_id}")
@@ -615,7 +615,7 @@ class ChallengesAPITestCase(unittest.TestCase):
             "invited_user_ids": [self.user2.id]
         }
         response = self.client.post("/api/challenges", json=payload)
-        challenge_id = response.get_json()["challenge"]["id"]
+        challenge_id = response.get_json()["challenge"]["challenge_id"]
 
         # User2 tries to delete
         response = self._get_client_for_user(2).delete(f"/api/challenges/{challenge_id}")
@@ -639,7 +639,7 @@ class ChallengesAPITestCase(unittest.TestCase):
             "end_date": end.isoformat(),
         }
         response = self.client.post("/api/challenges", json=payload)
-        challenge_id = response.get_json()["challenge"]["id"]
+        challenge_id = response.get_json()["challenge"]["challenge_id"]
 
         # Log screen time under target
         log_payload = {
@@ -702,13 +702,13 @@ class ChallengesAPITestCase(unittest.TestCase):
 
         # Add participants with logs
         participant1 = ChallengeParticipant(
-            challenge_id=challenge.id,
+            challenge_id=challenge.challenge_id,
             user_id=self.user1.id,
             days_logged=5,
             total_screen_time_minutes=250
         )
         participant2 = ChallengeParticipant(
-            challenge_id=challenge.id,
+            challenge_id=challenge.challenge_id,
             user_id=self.user2.id,
             days_logged=5,
             total_screen_time_minutes=350
@@ -752,7 +752,7 @@ class ChallengesAPITestCase(unittest.TestCase):
             "end_date": end.isoformat(),
         }
         response = self.client.post("/api/challenges", json=payload)
-        challenge_id = response.get_json()["challenge"]["id"]
+        challenge_id = response.get_json()["challenge"]["challenge_id"]
 
         # Log multiple apps
         self.client.post("/api/screen-time/", json={
@@ -799,7 +799,7 @@ class ChallengesAPITestCase(unittest.TestCase):
             "end_date": end.isoformat(),
         }
         response = self.client.post("/api/challenges", json=payload)
-        challenge_id = response.get_json()["challenge"]["id"]
+        challenge_id = response.get_json()["challenge"]["challenge_id"]
 
         # Log TikTok and other apps
         self.client.post("/api/screen-time/", json={

@@ -234,7 +234,7 @@ class Challenge(db.Model):
     
     __tablename__ = "challenges"
     
-    id = db.Column(db.Integer, primary_key=True)
+    challenge_id = db.Column(db.Integer, primary_key=True)
     
     # Challenge details
     name = db.Column(db.String(200), nullable=False)
@@ -265,7 +265,7 @@ class Challenge(db.Model):
     def to_dict(self) -> dict:
         """Serialize challenge for API responses."""
         return {
-            "id": self.id,
+            "challenge_id": self.challenge_id,
             "name": self.name,
             "description": self.description,
             "owner_id": self.owner_id,
@@ -287,8 +287,8 @@ class ChallengeParticipant(db.Model):
     
     __tablename__ = "challenge_participants"
     
-    id = db.Column(db.Integer, primary_key=True)
-    challenge_id = db.Column(db.Integer, db.ForeignKey("challenges.id"), nullable=False)
+    participant_id = db.Column(db.Integer, primary_key=True)
+    challenge_id = db.Column(db.Integer, db.ForeignKey("challenges.challenge_id"), nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
     
     # Participation tracking
@@ -317,7 +317,7 @@ class ChallengeParticipant(db.Model):
     def to_dict(self) -> dict:
         """Serialize participant data for API responses."""
         return {
-            "id": self.id,
+            "participant_id": self.participant_id,
             "challenge_id": self.challenge_id,
             "user_id": self.user_id,
             "joined_at": self.joined_at.isoformat() if self.joined_at else None,

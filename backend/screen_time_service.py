@@ -186,7 +186,7 @@ class ScreenTimeService:
             # Get the min/max date range across all challenges
             if active_challenges:
                 # Bulk fetch all relevant ChallengeParticipant records for this user and these challenges
-                challenge_ids = [challenge.id for challenge in active_challenges]
+                challenge_ids = [challenge.challenge_id for challenge in active_challenges]
                 participants = ChallengeParticipant.query.filter(
                     ChallengeParticipant.challenge_id.in_(challenge_ids),
                     ChallengeParticipant.user_id == user_id
@@ -205,7 +205,7 @@ class ScreenTimeService:
                 
                 # Process each challenge using the pre-fetched logs
                 for challenge in active_challenges:
-                    participant = participant_map.get(challenge.id)
+                    participant = participant_map.get(challenge.challenge_id)
                     if not participant:
                         continue
                     

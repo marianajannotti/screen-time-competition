@@ -69,8 +69,8 @@ def create_challenge():
             return add_api_headers(response)
         
         # Validate dates
-        if end_date < start_date:
-            response = make_response(jsonify({'error': 'End date must not be before start date'}), 400)
+        if end_date <= start_date:
+            response = make_response(jsonify({'error': 'End date must be after start date'}), 400)
             return add_api_headers(response)
         
         today = date.today()
@@ -114,11 +114,11 @@ def create_challenge():
         )
         
         db.session.add(challenge)
-        db.session.flush()  # Get challenge.id
+        db.session.flush()  # Get challenge.challenge_id
         
         # Add owner as participant
         owner_participant = ChallengeParticipant(
-            challenge_id=challenge.id,
+            challenge_id=challenge.challenge_id,
             user_id=current_user.id
         )
         db.session.add(owner_participant)
@@ -127,7 +127,7 @@ def create_challenge():
         for user_id in invited_ids:
             if user_id != current_user.id:  # Exclude owner (already added)
                 participant = ChallengeParticipant(
-                    challenge_id=challenge.id,
+                    challenge_id=challenge.challenge_id,
                     user_id=user_id
                 )
                 db.session.add(participant)
@@ -238,13 +238,15 @@ def get_leaderboard(challenge_id):
         return add_api_headers(response)
     
     # Get all participants with their stats
-    participants = ChallengeParticipant.query.filter_by(
+    participants = ChallengeParticipant.query.options(
+        joinedload(ChallengeParticipant.user)
+    ).filter_by(
         challenge_id=challenge_id
     ).all()
     
     leaderboard = []
     for participant in participants:
-        user = User.query.get(participant.user_id)  # N queries!
+        user = participant.user
         if not user:
             continue  # Skip if user was deleted
         
@@ -459,7 +461,7 @@ def _check_and_complete_challenge(challenge):
     if today > challenge.end_date and challenge.status == 'active':
         # Get all participants
         participants = ChallengeParticipant.query.filter_by(
-            challenge_id=challenge.id
+            challenge_id=challenge.challenge_id
         ).all()
         # Assign ranks and determine winners (inline logic)
         # Only include participants who logged at least once (days_logged > 0)
