@@ -7,7 +7,11 @@ from backend.database import db
 
 class ScreenTimeAPITestCase(unittest.TestCase):
     def setUp(self):
-        """Create a fresh app context and authenticated test client."""
+        """Create a fresh app context and authenticated test client.
+
+        Returns:
+            None
+        """
 
         self.app = create_app("testing")
         self.app_context = self.app.app_context()
@@ -23,7 +27,11 @@ class ScreenTimeAPITestCase(unittest.TestCase):
         self._login_user()
 
     def tearDown(self):
-        """Clean up database artifacts between tests."""
+        """Clean up database artifacts between tests.
+
+        Returns:
+            None
+        """
 
         db.session.remove()
         db.drop_all()
@@ -31,7 +39,11 @@ class ScreenTimeAPITestCase(unittest.TestCase):
         self.app_context.pop()
 
     def _register_user(self):
-        """Register the default test user via the API."""
+        """Register the default test user via the API.
+
+        Returns:
+            None
+        """
 
         payload = {
             "username": self.username,
@@ -42,14 +54,22 @@ class ScreenTimeAPITestCase(unittest.TestCase):
         self.assertEqual(response.status_code, 201)
 
     def _login_user(self):
-        """Login to capture the session cookies for subsequent requests."""
+        """Login to capture the session cookies for subsequent requests.
+
+        Returns:
+            None
+        """
 
         payload = {"username": self.username, "password": self.password}
         response = self.client.post("/api/auth/login", json=payload)
         self.assertEqual(response.status_code, 200)
 
     def test_create_screen_time_entry(self):
-        """Allowed app names should be persisted with derived time fields."""
+        """Allowed app names should be persisted with derived time fields.
+
+        Returns:
+            None
+        """
 
         payload = {
             "app_name": "YouTube",
@@ -72,7 +92,11 @@ class ScreenTimeAPITestCase(unittest.TestCase):
         self.assertEqual(logs[0]["app_name"], "YouTube")
 
     def test_invalid_minutes_rejected(self):
-        """Minutes must stay below 60 regardless of the hours provided."""
+        """Minutes must stay below 60 regardless of the hours provided.
+
+        Returns:
+            None
+        """
 
         payload = {"app_name": "TikTok", "hours": 0, "minutes": 75}
         response = self.client.post("/api/screen-time/", json=payload)
@@ -80,7 +104,11 @@ class ScreenTimeAPITestCase(unittest.TestCase):
         self.assertIn("error", response.get_json())
 
     def test_missing_app_name_defaults_to_total(self):
-        """Blank app names should default to the canonical "Total" bucket."""
+        """Blank app names should default to the canonical "Total" bucket.
+
+        Returns:
+            None
+        """
 
         payload = {"hours": 2, "minutes": 15}
         response = self.client.post("/api/screen-time/", json=payload)
@@ -88,7 +116,11 @@ class ScreenTimeAPITestCase(unittest.TestCase):
         self.assertEqual(response.get_json()["log"]["app_name"], "Total")
 
     def test_disallowed_app_name_is_rejected(self):
-        """Unknown app labels should yield a validation error."""
+        """Unknown app labels should yield a validation error.
+
+        Returns:
+            None
+        """
 
         payload = {"app_name": "NotARealApp", "hours": 1}
         response = self.client.post("/api/screen-time/", json=payload)
@@ -97,7 +129,11 @@ class ScreenTimeAPITestCase(unittest.TestCase):
         self.assertIn("App name must be one of", body["error"])
 
     def test_allowed_apps_endpoint_lists_dropdown_values(self):
-        """The apps endpoint should return the canonical dropdown options."""
+        """The apps endpoint should return the canonical dropdown options.
+
+        Returns:
+            None
+        """
 
         response = self.client.get("/api/screen-time/apps")
         self.assertEqual(response.status_code, 200)
