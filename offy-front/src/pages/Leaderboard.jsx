@@ -160,6 +160,7 @@ export default function Leaderboard(){
                   <div className="avatar tiny"><span className="initials">{p?.username?.[0]?.toUpperCase() || (p ? '?' : pos[0].toUpperCase())}</span></div>
                   <div className="name">{p ? (p.user_id === currentUserId ? `You (${p.username})` : p.username) : pos.charAt(0).toUpperCase()+pos.slice(1)}</div>
                   <div className="metric">{p? minutesLabel(p._avg) : '—'}</div>
+                  <div className="streak" style={{fontSize:12, color:'#fff', opacity:0.8}}>{p ? `${p._streak || 0} day streak` : '—'}</div>
                   {pos==='first' && <div className="crown" aria-hidden="true">👑</div>}
                 </div>
               </div>
