@@ -244,7 +244,7 @@ def get_leaderboard(challenge_id):
     
     leaderboard = []
     for participant in participants:
-        user = User.query.get(participant.user_id)
+        user = User.query.get(participant.user_id)  # N queries!
         if not user:
             continue  # Skip if user was deleted
         
