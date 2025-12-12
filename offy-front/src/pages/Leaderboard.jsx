@@ -1,22 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
+import { minutesLabel } from '../utils/timeFormatters'
 
 // Base URL for backend API; defaults to local dev server when env var absent.
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5001'
 // Shared headers for JSON GET requests; POST bodies set headers inline when needed.
 const GET_HEADERS = { 'Accept': 'application/json' }
-
-// Human-friendly formatter for minute values (e.g., 15 -> "15 min", 90 -> "1h 30m").
-function minutesLabel(value) {
-  if (value === null || value === undefined) return '—'
-  const mins = Number(value)
-  if (Number.isNaN(mins)) return '—'
-  if (mins < 60) return `${Math.round(mins)} min`
-  const hours = Math.floor(mins / 60)
-  const rem = Math.round(mins % 60)
-  if (rem === 0) return `${hours}h`
-  return `${hours}h ${rem}m`
-}
 
 async function fetchJson(path, options = {}) {
   // Small helper to call the backend with credentials and bubble meaningful errors.
