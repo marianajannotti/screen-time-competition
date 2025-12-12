@@ -305,7 +305,7 @@ class ChallengeParticipant(db.Model):
     # Final results when challenge completes
     final_rank = db.Column(db.Integer, nullable=True)  # 1 = winner (lowest total), 2 = second place, etc.
     is_winner = db.Column(db.Boolean, default=False)  # True only for whoever has lowest total screen time
-    challenge_completed = db.Column(db.Boolean, default=False)  # True for everyone who joined AND logged at least once
+    challenge_completed = db.Column(db.Boolean, default=False)  # True for participants who joined AND logged at least once; remains False for those who never logged any screen time during the challenge
     
     # Relationships
     challenge = db.relationship("Challenge", back_populates="participants")
