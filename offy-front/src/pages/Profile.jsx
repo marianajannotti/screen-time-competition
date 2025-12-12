@@ -1,13 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { badgesApi } from '../api/badgesApi'
-
-// Temporary mocked stats - moved outside component
-const MOCK_STATS = {
-  rank: 3,
-  streakDays: 8,
-  friends: 10,
-}
+import { getGlobalLeaderboard, getFriendships } from '../api/leaderboardApi'
 
 // Badge icons by type for visual differentiation
 const BADGE_ICONS = {
@@ -20,6 +14,15 @@ const BADGE_ICONS = {
 
 export default function Profile() {
   const { user } = useAuth()
+
+  // Normalize user id from different shapes across APIs
+  const getUserId = (u) => u?.user_id ?? u?.id ?? u?.userId ?? u?.uid ?? null
+
+  // Live stats
+  const [rank, setRank] = useState('—')
+  const [streakDays, setStreakDays] = useState('—')
+  const [friendCount, setFriendCount] = useState('—')
+  const [statsError, setStatsError] = useState(null)
 
   // Fallbacks while backend profile endpoints are not ready
   const displayName = useMemo(() => {
@@ -89,6 +92,41 @@ export default function Profile() {
     fetchBadgesData()
   }, [user?.id])
 
+  // Fetch leaderboard rank, streak, and friends count for the current user
+  useEffect(() => {
+    const uid = getUserId(user)
+    if (!uid) {
+      setRank('—')
+      setStreakDays('—')
+      setFriendCount('—')
+      return
+    }
+
+    let cancelled = false
+    async function loadStats() {
+      setStatsError(null)
+      try {
+        const [leaderboard, friendships] = await Promise.all([
+          getGlobalLeaderboard(),
+          getFriendships(),
+        ])
+
+        if (cancelled) return
+
+        const entry = leaderboard.find((u) => (u.user_id ?? u.id) === uid)
+        setRank(entry ? entry.rank ?? '—' : '—')
+        setStreakDays(entry ? (entry.streak ?? entry._streak ?? 0) : (user?.streak_count ?? '—'))
+        setFriendCount((friendships?.friends?.length ?? 0))
+      } catch (err) {
+        console.error('Failed to load profile stats', err)
+        if (!cancelled) setStatsError('Unable to load latest stats')
+      }
+    }
+
+    loadStats()
+    return () => { cancelled = true }
+  }, [user])
+
   // Handle Escape key to close modal
   useEffect(() => {
     if (!modalOpen) return
@@ -133,17 +171,17 @@ export default function Profile() {
         <div className="profile-right">
           <div className="profile-stat">
             <div className="icon">🏆</div>
-            <div className="value">#{MOCK_STATS.rank}</div>
-            <div className="label">Leaderboard</div>
+            <div className="value">#{rank}</div>
+            <div className="label">Global Leaderboard</div>
           </div>
           <div className="profile-stat">
             <div className="icon">🔥</div>
-            <div className="value">{MOCK_STATS.streakDays}</div>
+            <div className="value">{streakDays}</div>
             <div className="label">day streak</div>
           </div>
           <div className="profile-stat">
             <div className="icon">👥</div>
-            <div className="value">{MOCK_STATS.friends}</div>
+            <div className="value">{friendCount}</div>
             <div className="label">friends</div>
           </div>
         </div>
