@@ -115,7 +115,7 @@ export default function Profile() {
 
         const entry = leaderboard.find((u) => (u.user_id ?? u.id) === uid)
         setRank(entry ? entry.rank ?? '—' : '—')
-        setStreakDays(entry ? (entry.streak ?? entry._streak ?? 0) : (user?.streak_count ?? '—'))
+        setStreakDays(entry ? (entry.streak ?? entry._streak ?? 0) : '—')
         setFriendCount((friendships?.friends?.length ?? 0))
       } catch (err) {
         console.error('Failed to load profile stats', err)
