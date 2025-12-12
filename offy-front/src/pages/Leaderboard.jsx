@@ -207,9 +207,11 @@ export default function Leaderboard(){
             </table>
           </div>
         )}
-        <div className="lb-actions">
-          <button className="add-btn" onClick={()=>setShowModal(true)}>Add More Friends</button>
-        </div>
+        {tab === 'friends' && (
+          <div className="lb-actions">
+            <button className="add-btn" onClick={()=>setShowModal(true)}>Add More Friends</button>
+          </div>
+        )}
       </div>
       {showModal && (
         <div className="modal-backdrop" style={{zIndex:70}} onClick={(e)=>{ if (e.target === e.currentTarget) setShowModal(false) }}>
