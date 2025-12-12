@@ -1,9 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 
+// Base URL for backend API; defaults to local dev server when env var absent.
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5001'
+// Shared headers for JSON GET requests; POST bodies set headers inline when needed.
 const GET_HEADERS = { 'Accept': 'application/json' }
 
+// Human-friendly formatter for minute values (e.g., 15 -> "15 min", 90 -> "1h 30m").
 function minutesLabel(value) {
   if (value === null || value === undefined) return '—'
   const mins = Number(value)
@@ -16,6 +19,7 @@ function minutesLabel(value) {
 }
 
 async function fetchJson(path, options = {}) {
+  // Small helper to call the backend with credentials and bubble meaningful errors.
   const res = await fetch(`${API_BASE}${path}`, {
     credentials: 'include',
     ...options,
@@ -38,12 +42,12 @@ export default function Leaderboard(){
   // Get current user's ID for comparisons
   const currentUserId = getUserId(user)
   
+  // Core UI state: tab selection, data, loading/error, modal controls, and search text.
   const [tab, setTab] = useState('friends') // 'friends' | 'global'
   const [globalUsers, setGlobalUsers] = useState([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
   const [search, setSearch] = useState('')
-  const [addingFriend, setAddingFriend] = useState(null)
   const [friendships, setFriendships] = useState({ friends: [], incoming: [], outgoing: [] })
   const [error, setError] = useState(null)
 
@@ -104,9 +108,11 @@ export default function Leaderboard(){
     }))
   },[globalUsers])
 
+  // Pull accepted friends (counterparts) and track which friend IDs are surfaced in the tab.
   const acceptedFriends = useMemo(()=> (friendships?.friends || []).map(f=> f.counterpart).filter(Boolean), [friendships])
   const [visibleFriendIds, setVisibleFriendIds] = useState(new Set())
 
+  // Friends tab shows only IDs explicitly added (plus current user auto-included below).
   const rankedFriends = useMemo(()=> rankedGlobal.filter(u=>visibleFriendIds.has(u.user_id)), [rankedGlobal, visibleFriendIds])
 
   // Ensure the current user always appears in the Friends tab
@@ -119,6 +125,7 @@ export default function Leaderboard(){
     })
   }, [currentUserId])
 
+  // Add a friend ID to the Friends tab display list (from modal selection).
   function addVisibleFriend(id){
     setVisibleFriendIds(prev => {
       const next = new Set(prev)
@@ -130,6 +137,7 @@ export default function Leaderboard(){
   const list = tab==='friends' ? rankedFriends : rankedGlobal
   const podium = list.slice(0,3)
   const remainder = list.slice(3)
+  // Modal list: accepted friends not yet shown; supports simple case-insensitive search.
   const filteredAddable = useMemo(()=>{
     const q = search.trim().toLowerCase()
     return acceptedFriends.filter(u => !visibleFriendIds.has(u.id || u.user_id)).filter(u => !q || (u.username||'').toLowerCase().includes(q))
