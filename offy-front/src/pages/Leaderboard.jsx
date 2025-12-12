@@ -1,25 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { minutesLabel } from '../utils/timeFormatters'
-
-// Base URL for backend API; defaults to local dev server when env var absent.
-const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5001'
-// Shared headers for JSON GET requests; POST bodies set headers inline when needed.
-const GET_HEADERS = { 'Accept': 'application/json' }
-
-async function fetchJson(path, options = {}) {
-  // Small helper to call the backend with credentials and bubble meaningful errors.
-  const res = await fetch(`${API_BASE}${path}`, {
-    credentials: 'include',
-    ...options,
-  })
-  const data = await res.json().catch(() => ({}))
-  if (!res.ok) {
-    const msg = data?.error || data?.message || 'Request failed'
-    throw new Error(msg)
-  }
-  return data
-}
+import { getGlobalLeaderboard, getFriendships } from '../api/leaderboardApi'
 
 export default function Leaderboard(){
   const { user } = useAuth()
@@ -47,7 +29,7 @@ export default function Leaderboard(){
       if (!user) { setFriendships({ friends: [], incoming: [], outgoing: [] }); return }
       setError(null)
       try {
-        const res = await fetchJson('/api/friendships', { headers: GET_HEADERS })
+        const res = await getFriendships()
         if (!cancelled) setFriendships(res)
       } catch (e) {
         console.error(e)
@@ -75,8 +57,8 @@ export default function Leaderboard(){
       setLoading(true)
       setError(null)
       try {
-        const data = await fetchJson('/api/leaderboard/global', { headers: GET_HEADERS })
-        if (!cancelled) setGlobalUsers((data && data.leaderboard) || [])
+        const data = await getGlobalLeaderboard()
+        if (!cancelled) setGlobalUsers(data)
       } catch(e){
         console.error(e)
         if (!cancelled) setError(e.message)
