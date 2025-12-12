@@ -180,7 +180,7 @@ export default function Leaderboard(){
               </thead>
               <tbody>
                 {remainder.map((u,idx)=>{
-                  const rank = u._rank || (idx + 4)
+                  const rank = tab === 'friends' ? (idx + 4) : (u._rank || (idx + 4))
                   const isSelf = u.user_id === currentUserId
                   const displayName = isSelf ? `You (${u.username})` : u.username
                   return (
