@@ -34,6 +34,10 @@ export default function Leaderboard(){
   function getUserId(u) {
     return u?.user_id ?? u?.id ?? u?.userId ?? u?.uid ?? null
   }
+  
+  // Get current user's ID for comparisons
+  const currentUserId = getUserId(user)
+  
   const [tab, setTab] = useState('friends') // 'friends' | 'global'
   const [globalUsers, setGlobalUsers] = useState([])
   const [loading, setLoading] = useState(true)
@@ -105,6 +109,16 @@ export default function Leaderboard(){
 
   const rankedFriends = useMemo(()=> rankedGlobal.filter(u=>visibleFriendIds.has(u.user_id)), [rankedGlobal, visibleFriendIds])
 
+  // Ensure the current user always appears in the Friends tab
+  useEffect(()=>{
+    if (!currentUserId) return
+    setVisibleFriendIds(prev => {
+      const next = new Set(prev)
+      next.add(currentUserId)
+      return next
+    })
+  }, [currentUserId])
+
   function addVisibleFriend(id){
     setVisibleFriendIds(prev => {
       const next = new Set(prev)
@@ -144,7 +158,7 @@ export default function Leaderboard(){
                 <div className={`podium-block ${pos}`}> 
                   <div className="rank-badge">{pos==='first'?1:pos==='second'?2:3}</div>
                   <div className="avatar tiny"><span className="initials">{p?.username?.[0]?.toUpperCase() || (p ? '?' : pos[0].toUpperCase())}</span></div>
-                  <div className="name">{p? p.username : pos.charAt(0).toUpperCase()+pos.slice(1)}</div>
+                  <div className="name">{p ? (p.user_id === currentUserId ? `You (${p.username})` : p.username) : pos.charAt(0).toUpperCase()+pos.slice(1)}</div>
                   <div className="metric">{p? minutesLabel(p._avg) : '—'}</div>
                   {pos==='first' && <div className="crown" aria-hidden="true">👑</div>}
                 </div>
@@ -166,11 +180,12 @@ export default function Leaderboard(){
               <tbody>
                 {remainder.map((u,idx)=>{
                   const rank = u._rank || (idx + 4)
-                  const isSelf = u.user_id === user?.user_id
+                  const isSelf = u.user_id === currentUserId
+                  const displayName = isSelf ? `You (${u.username})` : u.username
                   return (
                     <tr key={u.user_id} className={isSelf? 'self':''}>
                       <td className="rank">{rank}</td>
-                      <td className="name">{isSelf? 'You' : u.username}</td>
+                      <td className="name">{displayName}</td>
                       <td className="metric">{minutesLabel(u._avg)}</td>
                       <td className="streak">{(u._streak||0)} day streak</td>
                     </tr>
