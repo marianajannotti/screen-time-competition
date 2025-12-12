@@ -1,14 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
-import {
-  getLeaderboard,
-  minutesLabel,
-  computeMonthlyStatsForUser,
-  seedMonthlyMockData,
-  resetAllMockData,
-  getFriendIds,
-  addFriendship,
-} from '../api/mockApi'
+import { minutesLabel } from '../utils/timeFormatters'
+import { getGlobalLeaderboard, getFriendships } from '../api/leaderboardApi'
 
 export default function Leaderboard(){
   const { user } = useAuth()
@@ -16,27 +9,34 @@ export default function Leaderboard(){
   function getUserId(u) {
     return u?.user_id ?? u?.id ?? u?.userId ?? u?.uid ?? null
   }
+  
+  // Get current user's ID for comparisons
+  const currentUserId = getUserId(user)
+  
+  // Core UI state: tab selection, data, loading/error, modal controls, and search text.
   const [tab, setTab] = useState('friends') // 'friends' | 'global'
   const [globalUsers, setGlobalUsers] = useState([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
   const [search, setSearch] = useState('')
-  const [addingFriend, setAddingFriend] = useState(null)
-  // Auto-seed on first load if needed
-  useEffect(()=>{ seedMonthlyMockData() },[])
-  const [friends, setFriends] = useState([])
+  const [friendships, setFriendships] = useState({ friends: [], incoming: [], outgoing: [] })
+  const [error, setError] = useState(null)
 
+  // Fetch friendships (accepted/pending) from backend
   useEffect(()=>{
     let cancelled = false
-    async function loadFriends(){
-      if (!user) { setFriends([]); return }
-      try{
-        const uid = user.user_id || user.id
-        const res = await getFriendIds(uid)
-        if (!cancelled) setFriends(res.friendIds || [])
-      }catch(e){ console.error(e) }
+    async function loadFriendships(){
+      if (!user) { setFriendships({ friends: [], incoming: [], outgoing: [] }); return }
+      setError(null)
+      try {
+        const res = await getFriendships()
+        if (!cancelled) setFriendships(res)
+      } catch (e) {
+        console.error(e)
+        if (!cancelled) setError(e.message)
+      }
     }
-    loadFriends()
+    loadFriendships()
     return ()=>{ cancelled = true }
   }, [user])
 
@@ -50,63 +50,69 @@ export default function Leaderboard(){
     return () => window.removeEventListener('keydown', onKey)
   }, [showModal])
 
+  // Fetch global leaderboard from backend
   useEffect(()=>{
     let cancelled=false
     async function load(){
       setLoading(true)
+      setError(null)
       try {
-        const { list } = await getLeaderboard()
-        if (!cancelled) setGlobalUsers(list)
-      } catch(e){ console.error(e) }
+        const data = await getGlobalLeaderboard()
+        if (!cancelled) setGlobalUsers(data)
+      } catch(e){
+        console.error(e)
+        if (!cancelled) setError(e.message)
+      }
       finally{ if(!cancelled) setLoading(false) }
     }
     load()
     return ()=>{ cancelled=true }
   }, [])
 
-  // Build monthly stats and rank by least average (lower is better). Tiebreak: longer streak wins.
   const rankedGlobal = useMemo(()=>{
-    const withStats = globalUsers.map(u=>{
-      const stats = computeMonthlyStatsForUser(u.user_id)
-      return { ...u, _avg: stats.avgPerDay, _streak: stats.streak }
-    })
-    return withStats.sort((a,b)=>{
-      const aHas = a._avg !== undefined
-      const bHas = b._avg !== undefined
-      if (aHas && bHas){
-        if (a._avg === b._avg) return (b._streak||0) - (a._streak||0)
-        return a._avg - b._avg
-      }
-      if (aHas) return -1
-      if (bHas) return 1
-      // both undefined: tie-break by username
-      return (a.username||'').localeCompare(b.username||'')
-    })
+    // Backend already returns sorted list; keep order but normalize metrics for display
+    return (globalUsers || []).map((u, idx)=> ({
+      ...u,
+      _rank: u.rank || idx + 1,
+      _avg: u.avg_per_day,
+      _streak: u.streak,
+    }))
   },[globalUsers])
-  const friendUserSet = useMemo(()=> new Set(friends), [friends])
-  const rankedFriends = useMemo(()=> rankedGlobal.filter(u=>friendUserSet.has(u.user_id)), [rankedGlobal, friendUserSet])
 
-  function addFriend(id){
-    if(friendUserSet.has(id) || !user || addingFriend === id) return
-    const uid = user.user_id || user.id
-    setAddingFriend(id)
-    addFriendship(uid, id).then(()=>{
-      setFriends(prev => Array.from(new Set([...prev, id])))
-      setAddingFriend(null)
-    }).catch((e)=>{
-      console.error('Failed to add friend', e)
-      setAddingFriend(null)
+  // Pull accepted friends (counterparts) and track which friend IDs are surfaced in the tab.
+  const acceptedFriends = useMemo(()=> (friendships?.friends || []).map(f=> f.counterpart).filter(Boolean), [friendships])
+  const [visibleFriendIds, setVisibleFriendIds] = useState(new Set())
+
+  // Friends tab shows only IDs explicitly added (plus current user auto-included below).
+  const rankedFriends = useMemo(()=> rankedGlobal.filter(u=>visibleFriendIds.has(u.user_id)), [rankedGlobal, visibleFriendIds])
+
+  // Ensure the current user always appears in the Friends tab
+  useEffect(()=>{
+    if (!currentUserId) return
+    setVisibleFriendIds(prev => {
+      const next = new Set(prev)
+      next.add(currentUserId)
+      return next
+    })
+  }, [currentUserId])
+
+  // Add a friend ID to the Friends tab display list (from modal selection).
+  function addVisibleFriend(id){
+    setVisibleFriendIds(prev => {
+      const next = new Set(prev)
+      next.add(id)
+      return next
     })
   }
 
   const list = tab==='friends' ? rankedFriends : rankedGlobal
   const podium = list.slice(0,3)
   const remainder = list.slice(3)
+  // Modal list: accepted friends not yet shown; supports simple case-insensitive search.
   const filteredAddable = useMemo(()=>{
     const q = search.trim().toLowerCase()
-    const uid = getUserId(user)
-    return rankedGlobal.filter(u=>u.user_id!==uid && !friendUserSet.has(u.user_id) && (!q || u.username.toLowerCase().includes(q)))
-  }, [search, rankedGlobal, friendUserSet, user])
+    return acceptedFriends.filter(u => !visibleFriendIds.has(u.id || u.user_id)).filter(u => !q || (u.username||'').toLowerCase().includes(q))
+  }, [search, acceptedFriends, visibleFriendIds])
 
   return (
     <main className="leaderboard-page">
@@ -116,9 +122,10 @@ export default function Leaderboard(){
           <button className={tab==='friends'? 'active': ''} onClick={()=>setTab('friends')}>Friends</button>
           <button className={tab==='global'? 'active': ''} onClick={()=>setTab('global')}>Global</button>
         </div>
+        {error && <div className="error-banner" style={{marginBottom:8}}>{error}</div>}
         {loading && <div className="lb-loading">Loading...</div>}
         {!loading && tab==='friends' && rankedFriends.length===0 && (
-          <div className="lb-empty">Add friends to see them in the leaderboard!</div>
+          <div className="lb-empty">Use “Add More Friends” to place friends into the leaderboard.</div>
         )}
         <div className="lb-podium refined">
           {['second','first','third'].map((pos) => {
@@ -130,8 +137,9 @@ export default function Leaderboard(){
                 <div className={`podium-block ${pos}`}> 
                   <div className="rank-badge">{pos==='first'?1:pos==='second'?2:3}</div>
                   <div className="avatar tiny"><span className="initials">{p?.username?.[0]?.toUpperCase() || (p ? '?' : pos[0].toUpperCase())}</span></div>
-                  <div className="name">{p? p.username : pos.charAt(0).toUpperCase()+pos.slice(1)}</div>
-                  <div className="metric">{p? (p._avg!==undefined ? minutesLabel(p._avg) : '—') : '—'}</div>
+                  <div className="name">{p ? (p.user_id === currentUserId ? `You (${p.username})` : p.username) : pos.charAt(0).toUpperCase()+pos.slice(1)}</div>
+                  <div className="metric">{p? minutesLabel(p._avg) : '—'}</div>
+                  <div className="streak" style={{fontSize:12, color:'#fff', opacity:0.8}}>{p ? `${p._streak || 0} day streak` : '—'}</div>
                   {pos==='first' && <div className="crown" aria-hidden="true">👑</div>}
                 </div>
               </div>
@@ -151,13 +159,14 @@ export default function Leaderboard(){
               </thead>
               <tbody>
                 {remainder.map((u,idx)=>{
-                  const rank = idx + 4
-                  const isSelf = u.user_id === user?.user_id
+                  const rank = tab === 'friends' ? (idx + 4) : (u._rank || (idx + 4))
+                  const isSelf = u.user_id === currentUserId
+                  const displayName = isSelf ? `You (${u.username})` : u.username
                   return (
                     <tr key={u.user_id} className={isSelf? 'self':''}>
                       <td className="rank">{rank}</td>
-                      <td className="name">{isSelf? 'You' : u.username}</td>
-                      <td className="metric">{u._avg!==undefined ? minutesLabel(u._avg) : '—'}</td>
+                      <td className="name">{displayName}</td>
+                      <td className="metric">{minutesLabel(u._avg)}</td>
                       <td className="streak">{(u._streak||0)} day streak</td>
                     </tr>
                   )
@@ -169,9 +178,11 @@ export default function Leaderboard(){
             </table>
           </div>
         )}
-        <div className="lb-actions">
-          <button className="add-btn" onClick={()=>setShowModal(true)}>Add More Friends</button>
-        </div>
+        {tab === 'friends' && (
+          <div className="lb-actions">
+            <button className="add-btn" onClick={()=>setShowModal(true)}>Add More Friends</button>
+          </div>
+        )}
       </div>
       {showModal && (
         <div className="modal-backdrop" style={{zIndex:70}} onClick={(e)=>{ if (e.target === e.currentTarget) setShowModal(false) }}>
@@ -183,28 +194,29 @@ export default function Leaderboard(){
             aria-labelledby="add-friends-modal-title"
           >
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}>
-              <h3 id="add-friends-modal-title" style={{margin:0}}>Add Friends</h3>
+              <h3 id="add-friends-modal-title" style={{margin:0}}>Add Friends to Leaderboard</h3>
               <button aria-label="Close modal" onClick={()=>setShowModal(false)} style={{background:'transparent',border:'none',fontSize:18}}>✕</button>
             </div>
-            <input type="text" placeholder="Search username" aria-label="Search username" value={search} onChange={e=>setSearch(e.target.value)} />
+            <input type="text" placeholder="Search friends" aria-label="Search friends" value={search} onChange={e=>setSearch(e.target.value)} />
             <div style={{marginTop:14,maxHeight:300,overflow:'auto',display:'grid',gap:10}}>
-              {filteredAddable.map(u=> (
-                <div key={u.user_id} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'10px 12px',border:'1px solid #eee',borderRadius:10}}>
-                  <div style={{display:'flex',alignItems:'center',gap:10}}>
-                    <div className="avatar small"><span className="initials">{u.username?.[0]?.toUpperCase()||'?'}</span></div>
-                    <span>{u.username}</span>
+              {filteredAddable.map(u=> {
+                const uid = u.id || u.user_id
+                const already = visibleFriendIds.has(uid)
+                return (
+                  <div key={uid} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'10px 12px',border:'1px solid #eee',borderRadius:10}}>
+                    <div style={{display:'flex',alignItems:'center',gap:10}}>
+                      <div className="avatar small"><span className="initials">{u.username?.[0]?.toUpperCase()||'?'}</span></div>
+                      <span>{u.username}</span>
+                    </div>
+                    <button className="btn-primary" onClick={()=>addVisibleFriend(uid)} disabled={already}>{already ? 'Added' : 'Add'}</button>
                   </div>
-                  <button className="btn-primary" onClick={()=>addFriend(u.user_id)} disabled={addingFriend === u.user_id}>{addingFriend === u.user_id ? 'Adding...' : 'Add'}</button>
-                </div>
-              ))}
-              {!filteredAddable.length && <div className="muted" style={{fontSize:14}}>No users match that search.</div>}
+                )
+              })}
+              {!filteredAddable.length && <div className="muted" style={{fontSize:14}}>No friends to add.</div>}
             </div>
           </div>
         </div>
       )}
-      <div style={{display:'flex',justifyContent:'center',marginTop:14}}>
-        <button className="btn-ghost" onClick={()=>{resetAllMockData(); seedMonthlyMockData(); window.location.reload()}}>Reset Mock Data</button>
-      </div>
     </main>
   )
 }
