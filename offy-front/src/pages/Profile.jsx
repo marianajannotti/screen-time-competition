@@ -113,7 +113,7 @@ export default function Profile() {
 
         if (cancelled) return
 
-        const entry = leaderboard.find((u) => (u.user_id ?? u.id) === uid)
+        const entry = leaderboard.find((u) => getUserId(u) === uid)
         setRank(entry ? entry.rank ?? '—' : '—')
         setStreakDays(entry ? (entry.streak ?? entry._streak ?? 0) : '—')
         setFriendCount((friendships?.friends?.length ?? 0))
