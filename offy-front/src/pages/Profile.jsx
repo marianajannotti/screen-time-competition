@@ -15,8 +15,8 @@ const BADGE_ICONS = {
 export default function Profile() {
   const { user } = useAuth()
 
-  // Normalize user id from different shapes across APIs
-  const getUserId = (u) => u?.user_id ?? u?.id ?? u?.userId ?? u?.uid ?? null
+  // Get user id from AuthContext user object
+  const getUserId = (u) => u?.id ?? null
 
   // Live stats
   const [rank, setRank] = useState('—')
