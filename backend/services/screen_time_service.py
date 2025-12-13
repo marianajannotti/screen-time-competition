@@ -170,7 +170,7 @@ class ScreenTimeService:
         # --- Challenge stats update logic ---
         # Wrapped in try-except to ensure screen time log succeeds even if challenge stats fail
         try:
-            from .models import Challenge, ChallengeParticipant
+            from ..models import Challenge, ChallengeParticipant
             from sqlalchemy.orm import selectinload
             
             # Find all active challenges for this user with eager loading to avoid N+1 queries
