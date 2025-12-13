@@ -80,7 +80,7 @@ class LeaderboardServiceTestCase(unittest.TestCase):
             hours=hours,
             minutes=remaining_minutes,
             total_minutes=minutes,
-            log_date=log_date
+            date=log_date
         )
         db.session.add(log)
         db.session.commit()
