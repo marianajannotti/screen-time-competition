@@ -272,11 +272,11 @@ export default function Dashboard() {
         </aside>
 
         <section>
-          <div style={{fontWeight:600,fontSize:'1.1rem',marginBottom:8,marginLeft:2}}>Total Screen Time</div>
           <div className="top-apps-row">
             <div className="top-app-card" style={{ background: 'linear-gradient(180deg,#fff,#fafcff)' }}>
               <div className="app-inner">
                 <div className="usage-main">{todayTotal !== undefined ? minutesLabel(todayTotal) : <span style={{fontSize:'12px'}}>Log your Total Screen Time</span>}</div>
+                <div className="usage-sub">Total Screen Time</div>
                 {todayTotal === undefined && (
                   <div className="usage-sub">Click on the +Log Hours button on the bottom right to log your hours</div>
                 )}
