@@ -60,6 +60,7 @@ def register():
 
         # Create user
         new_user = AuthService.create_user(username, email, password)
+        login_user(new_user)
 
         response = make_response(
             jsonify(

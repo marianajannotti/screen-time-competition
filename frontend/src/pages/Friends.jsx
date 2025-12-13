@@ -1,147 +1,184 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import { friendshipApi } from '../api/friendshipApi'
 import { useAuth } from '../contexts/AuthContext'
-import {
-  getLeaderboard,
-  getFriendIds,
-  addFriendship,
-  removeFriendship,
-  minutesLabel,
-  computeMonthlyStatsForUser,
-} from '../api/mockApi'
 
-export default function Friends(){
-  const { user } = useAuth()
-  const [allUsers, setAllUsers] = useState([])
-  const [friendIds, setFriendIds] = useState([])
+export default function Friends() {
+  useAuth()
   const [loading, setLoading] = useState(true)
-  const [search, setSearch] = useState('')
-  const [addingFriend, setAddingFriend] = useState(null)
-  const [removingFriend, setRemovingFriend] = useState(null)
+  const [error, setError] = useState(null)
+  const [username, setUsername] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [data, setData] = useState({ friends: [], incoming: [], outgoing: [] })
 
-  useEffect(()=>{
-    let cancelled = false
-    async function load(){
-      setLoading(true)
-      try{
-        const { list } = await getLeaderboard()
-        if (!cancelled) setAllUsers(list)
-        const uid = user?.user_id || user?.id
-        if (uid) {
-          const res = await getFriendIds(uid)
-          if (!cancelled) setFriendIds(res.friendIds || [])
-        } else {
-          if (!cancelled) setFriendIds([])
-        }
-      }catch(e){ console.error(e) }
-      finally{ if(!cancelled) setLoading(false) }
+  // Quick indicator to adjust empty-state copy
+  const hasAny = useMemo(
+    () =>
+      (data.friends?.length || 0) + (data.incoming?.length || 0) + (data.outgoing?.length || 0) > 0,
+    [data],
+  )
+
+  // Fetch friendship lists from the backend
+  const load = useCallback(async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const res = await friendshipApi.list()
+      setData(res)
+    } catch (err) {
+      setError(err.message || 'Failed to load friends')
+    } finally {
+      setLoading(false)
     }
+  }, [])
+
+  useEffect(() => {
     load()
-    return ()=>{ cancelled = true }
-  }, [user])
+  }, [load])
 
-  const friendSet = useMemo(()=> new Set(friendIds), [friendIds])
-
-  const friends = useMemo(()=>{
-    return allUsers.filter(u=> friendSet.has(u.user_id)).map(u=>{
-      const stats = computeMonthlyStatsForUser(u.user_id)
-      return { ...u, _avg: stats.avgPerDay, _streak: stats.streak }
-    })
-  }, [allUsers, friendSet])
-
-  const available = useMemo(()=>{
-    const q = search.trim().toLowerCase()
-    return allUsers.filter(u=> u.user_id !== (user?.user_id || user?.id) && !friendSet.has(u.user_id) && (!q || u.username.toLowerCase().includes(q)))
-  }, [allUsers, friendSet, search, user])
-
-  async function handleAdd(id){
-    const uid = user?.user_id || user?.id
-    if (!uid || addingFriend === id) return
-    setAddingFriend(id)
-    try{
-      await addFriendship(uid, id)
-      setFriendIds(prev => Array.from(new Set([...prev, id])))
-      setAddingFriend(null)
-    }catch(e){ 
-      console.error('Add friend failed', e)
-      setAddingFriend(null)
+  // Send a new request and refresh lists
+  async function handleSend(e) {
+    e.preventDefault()
+    if (!username.trim()) return
+    setSubmitting(true)
+    setError(null)
+    try {
+      await friendshipApi.sendRequest(username.trim())
+      setUsername('')
+      await load()
+    } catch (err) {
+      setError(err.message || 'Failed to send request')
+    } finally {
+      setSubmitting(false)
     }
   }
 
-  async function handleRemove(id){
-    const uid = user?.user_id || user?.id
-    if (!uid || removingFriend === id) return
-    setRemovingFriend(id)
-    try{
-      await removeFriendship(uid, id)
-      setFriendIds(prev => prev.filter(x=> x!==id))
-      setRemovingFriend(null)
-    }catch(e){ 
-      console.error('Remove friend failed', e)
-      setRemovingFriend(null)
+  async function handleAction(actionFn) {
+    setError(null)
+    try {
+      await actionFn()
+      await load()
+    } catch (err) {
+      setError(err.message || 'Action failed')
     }
   }
 
   return (
     <main className="friends-page">
-      <h1 className="lb-title">Friends</h1>
-      <div className="lb-card">
-        <div style={{display:'flex',gap:12,alignItems:'center',justifyContent:'space-between',marginBottom:12}}>
-          <div style={{fontSize:16,fontWeight:600}}>Your friends</div>
-          <div style={{display:'flex',gap:8,alignItems:'center'}}>
-            <input placeholder="Search to add" value={search} onChange={e=>setSearch(e.target.value)} style={{padding:8,borderRadius:8,border:'1px solid #ddd'}} />
-          </div>
-        </div>
-
-        {loading && <div className="lb-loading">Loading...</div>}
-
-        {!loading && friends.length===0 && (
-          <div className="lb-empty">You have no friends yet. Add some below!</div>
-        )}
-
-        {!loading && friends.length>0 && (
-          <div className="lb-table-wrapper">
-            <table className="lb-table">
-              <thead>
-                <tr>
-                  <th scope="col">Name</th>
-                  <th scope="col">Avg. Screen Time</th>
-                  <th scope="col">Streak</th>
-                  <th scope="col"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {friends.map(u=> (
-                  <tr key={u.user_id}>
-                    <td>{u.username}</td>
-                    <td>{u._avg!==undefined ? minutesLabel(u._avg) : '—'}</td>
-                    <td>{(u._streak||0)} day streak</td>
-                    <td><button className="btn-ghost" onClick={()=>handleRemove(u.user_id)} disabled={removingFriend === u.user_id}>{removingFriend === u.user_id ? 'Removing...' : 'Remove'}</button></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-
-        <hr style={{margin:'18px 0'}} />
-
-        <div style={{fontSize:16,fontWeight:600,marginBottom:8}}>Add new friends</div>
-        <div style={{display:'grid',gap:10,maxHeight:320,overflow:'auto'}}>
-          {available.map(u=> (
-            <div key={u.user_id} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'10px 12px',border:'1px solid #eee',borderRadius:10}}>
-              <div style={{display:'flex',alignItems:'center',gap:10}}>
-                <div className="avatar small"><span className="initials">{u.username?.[0]?.toUpperCase()||'?'}</span></div>
-                <div>
-                  <div style={{fontWeight:600}}>{u.username}</div>
-                  <div className="muted" style={{fontSize:12}}>{u.email || ''}</div>
-                </div>
-              </div>
-              <button className="btn-primary" onClick={()=>handleAdd(u.user_id)} disabled={addingFriend === u.user_id}>{addingFriend === u.user_id ? 'Adding...' : 'Add'}</button>
-            </div>
-          ))}
-          {!available.length && <div className="muted" style={{fontSize:14}}>No users match that search.</div>}
+      <div className="page-header">
+        <div>
+          <h1 className="lb-title">Friends</h1>
         </div>
       </div>
+
+      <section className="card friends-send-card">
+        <div>
+          <h3>Send a friend request</h3>
+        </div>
+        <form className="friends-send-form" onSubmit={handleSend}>
+          <input
+            type="text"
+            placeholder="Enter username"
+            aria-label="Friend username"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            disabled={submitting}
+          />
+          <button type="submit" className="btn-primary" disabled={submitting || !username.trim()}>
+            {submitting ? 'Sending...' : 'Send request'}
+          </button>
+        </form>
+      </section>
+
+      {error && <div className="error-banner">{error}</div>}
+
+      {loading ? (
+        <div className="muted">Loading friends…</div>
+      ) : (
+        <div className="friends-grid">
+          <FriendsColumn
+            title="Incoming requests"
+            emptyText="No incoming requests."
+            items={data.incoming}
+            renderActions={(item) => (
+              <div className="friends-actions">
+                <button
+                  className="btn-primary"
+                  onClick={() => handleAction(() => friendshipApi.accept(item.id))}
+                  aria-label={`Accept friend request from ${item.counterpart?.username || 'Unknown user'}`}
+                >
+                  Accept
+                </button>
+                <button
+                  className="btn-ghost"
+                  onClick={() => handleAction(() => friendshipApi.reject(item.id))}
+                  aria-label={`Reject friend request from ${item.counterpart?.username || 'Unknown user'}`}
+                >
+                  Reject
+                </button>
+              </div>
+            )}
+          />
+
+          <FriendsColumn
+            title="Outgoing requests"
+            emptyText="No pending outgoing requests."
+            items={data.outgoing}
+            renderActions={(item) => (
+              <div className="friends-actions">
+                <button
+                  className="btn-ghost"
+                  onClick={() => handleAction(() => friendshipApi.cancel(item.id))}
+                  aria-label={`Cancel friend request to ${item.counterpart?.username}`}
+                >
+                  Cancel
+                </button>
+              </div>
+            )}
+          />
+
+          <FriendsColumn
+            title="Friends"
+            emptyText={hasAny ? 'No accepted friends yet.' : 'No friends yet — send your first request!'}
+            items={data.friends}
+            renderActions={null}
+          />
+        </div>
+      )}
     </main>
+  )
+}
+
+function FriendsColumn({ title, emptyText, items, renderActions }) {
+  return (
+    <section className="card friends-column">
+      <div className="friends-column-header">
+        <h3>{title}</h3>
+        <span className="pill">{items?.length || 0}</span>
+      </div>
+      {(!items || items.length === 0) && <p className="muted">{emptyText}</p>}
+      <div className="friends-list">
+        {items?.map((item) => (
+          <FriendRow key={item.id} item={item} renderActions={renderActions} />
+        ))}
+      </div>
+    </section>
+  )
+}
+
+function FriendRow({ item, renderActions }) {
+  const counterpart = item.counterpart || {}
+  const initials = (counterpart.username || '?').slice(0, 2).toUpperCase()
+
+  return (
+    <div className="friend-row">
+      <div className="friend-row-left">
+        <div className="avatar-circle">{initials}</div>
+        <div>
+          <div className="friend-name">{counterpart.username || 'Unknown user'}</div>
+          <div className="muted small">{counterpart.email || 'No email'}</div>
+        </div>
+      </div>
+      {renderActions ? renderActions(item) : null}
+    </div>
   )
 }
