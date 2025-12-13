@@ -66,12 +66,19 @@ class ChallengeParticipant(db.Model):
     challenge_id = db.Column(db.Integer, db.ForeignKey("challenges.challenge_id"), nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
     
+    # Invitation status: 'pending', 'accepted', 'declined'
+    invitation_status = db.Column(db.String(20), default='pending', nullable=False)
+    
     # Participation tracking
     joined_at = db.Column(db.DateTime, default=current_time_utc)
     
     # Daily performance tracking (cumulative stats for profile display)
     days_passed = db.Column(db.Integer, default=0)  # Days where total screen time was at or under target (only counts logged days)
     days_failed = db.Column(db.Integer, default=0)  # Total days exceeded target (only counts logged days)
+    
+    # Today's status (for real-time UI updates)
+    today_minutes = db.Column(db.Integer, default=0)  # Minutes logged today for this challenge
+    today_passed = db.Column(db.Boolean, default=None, nullable=True)  # None = no data, True = passed today, False = failed today
     
     # Overall performance (calculated from screen time logs)
     total_screen_time_minutes = db.Column(db.Integer, default=0)  # Sum of screen time for all logged days
@@ -95,9 +102,12 @@ class ChallengeParticipant(db.Model):
             "participant_id": self.participant_id,
             "challenge_id": self.challenge_id,
             "user_id": self.user_id,
+            "invitation_status": self.invitation_status,
             "joined_at": self.joined_at.isoformat() if self.joined_at else None,
             "days_passed": self.days_passed,
             "days_failed": self.days_failed,
+            "today_minutes": self.today_minutes,
+            "today_passed": self.today_passed,
             "total_screen_time_minutes": self.total_screen_time_minutes,
             "days_logged": self.days_logged,
             "final_rank": self.final_rank,
