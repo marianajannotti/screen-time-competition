@@ -5,17 +5,19 @@ A web application for friendly screen time competition - track daily usage, set 
 ## 🚀 Quick Start
 
 ### Prerequisites
-- Python 3.8+
-- git
+- **Python 3.11+** - [Download](https://www.python.org/downloads/)
+- **Node.js 18+** - [Download](https://nodejs.org/)
+- **Git** - [Download](https://git-scm.com/)
 
 ### Setup
+
 1. **Clone the repository:**
    ```bash
    git clone https://github.com/marianajannotti/screen-time-competition.git
    cd screen-time-competition
    ```
 
-2. **Create and activate virtual environment:**
+2. **Create virtual environment (recommended):**
    ```bash
    python -m venv venv
    source venv/bin/activate  # On Windows: venv\Scripts\activate
@@ -23,46 +25,83 @@ A web application for friendly screen time competition - track daily usage, set 
 
 3. **Install dependencies:**
    ```bash
-   pip install -r backend/requirements.txt
+   # Backend
+   pip install -r requirements.txt
+   
+   # Frontend
+   cd frontend && npm install && cd ..
    ```
 
 4. **Create `.env` file in project root:**
    ```bash
-   SECRET_KEY=your-team-secret-key-2024
+   SECRET_KEY=your-secret-key-here
    FLASK_ENV=development
    DATABASE_URL=sqlite:///screen_time_app.db
+   
+   # Optional - for password reset feature
+   MAIL_USERNAME=your-email@gmail.com
+   MAIL_PASSWORD=your-app-password
    ```
 
-5. **Run the backend:**
-   ```bash
-   python run.py
-   ```
-   API available at: `http://127.0.0.1:5000`
+### Running the App
 
-## Frontend (React + Vite)
+#### Option 1: Use Start Script (Easiest) ⭐
 
-The frontend lives in the `offy-front` directory. To run the development server:
-
-1. Change into the frontend folder and install dependencies:
+**macOS/Linux:**
 ```bash
-cd offy-front
-npm install
+chmod +x start.sh  # First time only
+./start.sh
 ```
 
-2. Start the dev server:
+**Windows:**
 ```bash
+start.bat
+```
+
+This automatically starts both servers:
+- **Backend**: http://localhost:5001
+- **Frontend**: http://localhost:5173 (default, or next available port)
+
+#### Option 2: Manual Start (Two Terminals)
+
+**Terminal 1 - Backend:**
+```bash
+source venv/bin/activate  # Activate venv if created
+python run_backend.py
+```
+
+**Terminal 2 - Frontend:**
+```bash
+cd frontend
 npm run dev
 ```
 
-The Vite dev server typically runs at `http://localhost:5173` (or `5174` if the port is occupied).
+## �️ Troubleshooting
 
-Environment note: the frontend reads `VITE_API_BASE` to point at the backend API (default `http://localhost:5001`). If your backend runs on a different host/port, set it in `offy-front/.env`:
+### Common Issues
 
-```
-VITE_API_BASE=http://localhost:5001
-```
+**"ModuleNotFoundError: No module named 'flask'"**
+- Activate virtual environment: `source venv/bin/activate`
+- Install dependencies: `pip install -r requirements.txt`
 
-## 🔧 Backend API
+**"command not found: npm"**
+- Install Node.js from https://nodejs.org/
+
+**Port already in use**
+- Backend (5001): `lsof -ti:5001 | xargs kill -9`
+- Frontend (5173): `lsof -ti:5173 | xargs kill -9`
+- Or just use `./start.sh` which handles this automatically
+- Note: Vite auto-increments to 5174, 5175... if 5173 is busy
+
+**Frontend can't connect to backend**
+- Ensure backend is running on port 5001
+- Check that `DATABASE_URL` is set in `.env`
+
+**Database errors**
+- Reset database: `rm instance/screen_time_app.db`
+- Restart backend - tables recreate automatically
+
+## �🔧 Backend API
 
 ### Features
 - **Authentication System** - User registration, login, session management
@@ -89,7 +128,7 @@ To keep UX simple and typo-free, `app_name` must be one of the curated values re
 
 #### 1. Log Screen Time (authenticated)
 ```bash
-curl -X POST "http://127.0.0.1:5000/api/screen-time/" \
+curl -X POST "http://localhost:5001/api/screen-time/" \
    -H "Content-Type: application/json" \
    -b cookies.txt \
    -d '{
@@ -103,7 +142,7 @@ curl -X POST "http://127.0.0.1:5000/api/screen-time/" \
 To log total screen time without specifying an app, omit `app_name`:
 
 ```bash
-curl -X POST "http://127.0.0.1:5000/api/screen-time/" \
+curl -X POST "http://localhost:5001/api/screen-time/" \
    -H "Content-Type: application/json" \
    -b cookies.txt \
    -d '{
@@ -114,31 +153,31 @@ curl -X POST "http://127.0.0.1:5000/api/screen-time/" \
 
 #### 2. Fetch Recent Entries (authenticated)
 ```bash
-curl -s "http://127.0.0.1:5000/api/screen-time/?limit=10" -b cookies.txt
+curl -s "http://localhost:5001/api/screen-time/?limit=10" -b cookies.txt
 ```
 
 #### 3. Fetch Allowed Apps (public)
 ```bash
-curl -s "http://127.0.0.1:5000/api/screen-time/apps"
+curl -s "http://localhost:5001/api/screen-time/apps"
 ```
 
 ## 🧪 Testing the Backend
 
 ### 1. Check Status
 ```bash
-curl -s "http://127.0.0.1:5000/api/auth/status"
+curl -s "http://localhost:5001/api/auth/status"
 ```
 
 ### 2. Register User
 ```bash
-curl -X POST "http://127.0.0.1:5000/api/auth/register" \
+curl -X POST "http://localhost:5001/api/auth/register" \
   -H "Content-Type: application/json" \
   -d '{"username": "testuser", "email": "test@example.com", "password": "password123"}'
 ```
 
 ### 3. Login
 ```bash
-curl -X POST "http://127.0.0.1:5000/api/auth/login" \
+curl -X POST "http://localhost:5001/api/auth/login" \
   -H "Content-Type: application/json" \
   -c cookies.txt \
   -d '{"username": "testuser", "password": "password123"}'
@@ -146,7 +185,7 @@ curl -X POST "http://127.0.0.1:5000/api/auth/login" \
 
 ### 4. Get User Info (requires login)
 ```bash
-curl -s "http://127.0.0.1:5000/api/auth/me" -b cookies.txt
+curl -s "http://localhost:5001/api/auth/me" -b cookies.txt
 ```
 
 ---
