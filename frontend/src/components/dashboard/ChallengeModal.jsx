@@ -73,7 +73,6 @@ export default function ChallengeModal({ onClose, onCreate, currentUser }) {
     }
     
     try {
-      console.log('Creating challenge with payload:', payload)
       await createChallenge(payload)
       onCreate && onCreate()
       onClose()
