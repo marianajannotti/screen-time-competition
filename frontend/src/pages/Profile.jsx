@@ -391,4 +391,3 @@ function formatEarnedDate(dateString) {
     return ''
   }
 }
-
