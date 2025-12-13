@@ -143,26 +143,32 @@ export default function Dashboard() {
   const uniqueApps = Array.from(new Set(logs.filter(l=>l.app !== '__TOTAL__').map(l=>l.app))).sort()
   const appColorMap = uniqueApps.reduce((acc, app, idx) => { acc[app] = chartColors[idx % chartColors.length]; return acc }, {})
   
-  // Get current week (Sunday to Saturday)
+  // Rolling last 7 days (ending today) - use local date to avoid timezone issues
   const today = new Date()
-  const todayStr = today.toISOString().slice(0,10)
-  const currentDayOfWeek = today.getDay() // 0 = Sunday, 6 = Saturday
+  const todayLocalStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`
   
-  // Generate all days of current week (Sun-Sat)
-  const currentWeekDays = Array.from({length:7}, (_,i)=>{
-    const d = new Date(today.getFullYear(), today.getMonth(), today.getDate() - currentDayOfWeek + i)
-    return d.toISOString().slice(0,10)
+  // Generate last 7 days (6 days ago through today) in local time
+  const last7Days = Array.from({length:7}, (_,i)=>{
+    const d = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 6 + i)
+    return {
+      dateStr: `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`,
+      dayLabel: d.toLocaleDateString('en-US',{weekday:'short'})
+    }
   })
   
-  const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']
   const chartData = {}
-  currentWeekDays.forEach((ds, i) => {
-    // Only show data for days up to and including today (not future days)
-    if (ds > todayStr) return
-
+  const days = []
+  
+  last7Days.forEach(({dateStr, dayLabel}) => {
+    days.push(dayLabel)
+    
     // build day entry
-    const dayLogs = logs.filter(l => l.date === ds)
-    if (!dayLogs.length) return
+    const dayLogs = logs.filter(l => l.date === dateStr)
+    if (!dayLogs.length) {
+      chartData[dayLabel] = { apps: {}, remainder: 0, total: 0 }
+      return
+    }
+    
     const totalEntry = dayLogs.find(l => l.app === '__TOTAL__')
     const apps = {}
     dayLogs.filter(l => l.app !== '__TOTAL__').forEach(l => { apps[l.app] = (apps[l.app]||0) + l.minutes })
@@ -171,7 +177,7 @@ export default function Dashboard() {
     else total = Object.values(apps).reduce((a,b)=>a+b,0)
     const stackedSum = Object.values(apps).reduce((a,b)=>a+b,0)
     const remainder = Math.max(0, total - stackedSum)
-    chartData[days[i]] = { apps, remainder, total }
+    chartData[dayLabel] = { apps, remainder, total }
   })
 
   // Loading state: Show spinner while fetching data from backend API
