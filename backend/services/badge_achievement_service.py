@@ -7,7 +7,7 @@ from .badge_service import BadgeService
 from .screen_time_service import ScreenTimeService
 
 
-class BadgeLogic:
+class BadgeAchievementService:
     """Logic for determining and awarding badges based on user achievements."""
     
     @staticmethod
@@ -31,11 +31,11 @@ class BadgeLogic:
         
         # Check all badge types (transaction is already managed by the caller)
         try:
-            awarded_badges.extend(BadgeLogic._check_streak_badges(user))
-            awarded_badges.extend(BadgeLogic._check_reduction_badges(user))
-            awarded_badges.extend(BadgeLogic._check_social_badges(user))
-            awarded_badges.extend(BadgeLogic._check_leaderboard_badges(user))
-            awarded_badges.extend(BadgeLogic._check_prestige_badges(user))
+            awarded_badges.extend(BadgeAchievementService._check_streak_badges(user))
+            awarded_badges.extend(BadgeAchievementService._check_reduction_badges(user))
+            awarded_badges.extend(BadgeAchievementService._check_social_badges(user))
+            awarded_badges.extend(BadgeAchievementService._check_leaderboard_badges(user))
+            awarded_badges.extend(BadgeAchievementService._check_prestige_badges(user))
         except Exception as e:
             print(f"Error checking badges for user {user_id}: {str(e)}")
             return []

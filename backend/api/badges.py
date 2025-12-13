@@ -125,8 +125,8 @@ def check_user_badges(user_id: int):
             response = make_response(jsonify({"error": "Access denied"}), 403)
             return add_api_headers(response)
         
-        from ..services import BadgeLogic
-        awarded_badges = BadgeLogic.check_and_award_badges(user_id)
+        from ..services import BadgeAchievementService
+        awarded_badges = BadgeAchievementService.check_and_award_badges(user_id)
         
         response = make_response(jsonify({
             "message": f"Badge check completed for user {user_id}",

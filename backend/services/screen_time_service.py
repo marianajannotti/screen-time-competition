@@ -163,13 +163,13 @@ class ScreenTimeService:
 
         # Check and award badges after creating/updating a screen time entry
         try:
-            from .badge_logic import BadgeLogic
+            from .badge_achievement_service import BadgeAchievementService
         except ImportError as e:
-            # Badge logic module is missing; log and continue
-            logger.error(f"Badge logic import error for user {user_id}: {e}")
+            # Badge achievement service is missing; log and continue
+            logger.error(f"Badge achievement service import error for user {user_id}: {e}")
         else:
             try:
-                awarded_badges = BadgeLogic.check_and_award_badges(user_id)
+                awarded_badges = BadgeAchievementService.check_and_award_badges(user_id)
                 if awarded_badges:
                     logger.info(
                         f"Awarded badges to user {user_id}: {awarded_badges}"

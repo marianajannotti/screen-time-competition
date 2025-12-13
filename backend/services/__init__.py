@@ -2,7 +2,7 @@
 
 from .auth_service import AuthService
 from .badge_service import BadgeService
-from .badge_logic import BadgeLogic
+from .badge_achievement_service import BadgeAchievementService
 from .friendship_service import FriendshipService
 from .leaderboard_service import LeaderboardService
 from .screen_time_service import ScreenTimeService, ValidationError
@@ -12,7 +12,7 @@ from .email_service import send_password_reset_email
 __all__ = [
     'AuthService',
     'BadgeService',
-    'BadgeLogic',
+    'BadgeAchievementService',
     'FriendshipService',
     'LeaderboardService',
     'ScreenTimeService',
