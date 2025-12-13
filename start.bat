@@ -48,9 +48,9 @@ if errorlevel 1 (
 )
 
 REM Check if frontend dependencies are installed
-if not exist "offy-front\node_modules" (
+if not exist "frontend\node_modules" (
     echo ⚠️  Frontend dependencies not found. Installing...
-    cd offy-front
+    cd frontend
     call npm install
     cd ..
 )
@@ -64,13 +64,13 @@ echo Press Ctrl+C to stop both servers
 echo.
 
 REM Start backend in background
-start "Flask Backend" cmd /c "python run.py"
+start "Flask Backend" cmd /c "python run_backend.py"
 
 REM Wait a bit for backend to start
 timeout /t 2 /nobreak >nul
 
 REM Start frontend in background
-cd offy-front
+cd frontend
 start "Vite Frontend" cmd /c "npm run dev"
 cd ..
 
