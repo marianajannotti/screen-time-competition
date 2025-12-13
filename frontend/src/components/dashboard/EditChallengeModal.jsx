@@ -34,9 +34,7 @@ export default function EditChallengeModal({ challenge, currentUser, onClose, on
           .filter(Boolean)
           .filter(friend => !existingParticipantIds.has(getUserId(friend)))
         
-        console.log('Existing participant IDs:', Array.from(existingParticipantIds))
-        console.log('All friends:', (data.friends || []).map(f => f.counterpart?.username))
-        console.log('Available to invite:', acceptedFriends.map(f => f.username))
+        // Debug logging removed
         
         setFriends(acceptedFriends)
       } catch (err) {
@@ -82,7 +80,7 @@ export default function EditChallengeModal({ challenge, currentUser, onClose, on
     }
     
     try {
-      console.log('Updating challenge with payload:', payload)
+      // Debug logging removed
       await updateChallenge(challenge.challenge_id, payload)
       onUpdate && onUpdate()
       onClose()

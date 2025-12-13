@@ -101,40 +101,44 @@ export default function Friends() {
         <div className="muted">Loading friends…</div>
       ) : (
         <div className="friends-grid">
-          <FriendsColumn
-            title="Challenge invitations"
-            emptyText="No pending challenge invitations."
-            items={challengeInvitations}
-            renderItem={(item) => (
-              <>
-                <div className="avatar-circle">{(item.owner_username || '?').slice(0, 2).toUpperCase()}</div>
-                <div>
-                  <div style={{fontWeight:600}}>From {item.owner_username || 'Unknown'}</div>
-                  <div style={{fontSize:13,color:'#64748b'}}>
-                    {item.target_app === '__TOTAL__' ? 'Total Screen Time' : item.target_app} • {item.target_minutes}min/day
+          <section className="card friends-column">
+            <div className="friends-column-header">
+              <h3>Challenge invitations</h3>
+              <span className="pill">{challengeInvitations?.length || 0}</span>
+            </div>
+            {(!challengeInvitations || challengeInvitations.length === 0) && <p className="muted">No pending challenge invitations.</p>}
+            <div className="friends-list">
+              {challengeInvitations?.map((item) => (
+                <div key={item.participant_id || item.challenge_id} className="friend-row">
+                  <div className="friend-row-left">
+                    <div className="avatar-circle">{(item.owner_username || '?').slice(0, 2).toUpperCase()}</div>
+                    <div>
+                      <div style={{fontWeight:600}}>From {item.owner_username || 'Unknown'}</div>
+                      <div style={{fontSize:13,color:'#64748b'}}>
+                        {item.target_app === '__TOTAL__' ? 'Total Screen Time' : item.target_app} • {item.target_minutes}min/day
+                      </div>
+                    </div>
+                  </div>
+                  <div className="friends-actions">
+                    <button
+                      className="btn-primary"
+                      onClick={() => handleAction(() => acceptInvitation(item.participant_id))}
+                      aria-label={`Accept challenge invitation for ${item.name}`}
+                    >
+                      Accept
+                    </button>
+                    <button
+                      className="btn-ghost"
+                      onClick={() => handleAction(() => declineInvitation(item.participant_id))}
+                      aria-label={`Decline challenge invitation for ${item.name}`}
+                    >
+                      Decline
+                    </button>
                   </div>
                 </div>
-              </>
-            )}
-            renderActions={(item) => (
-              <div className="friends-actions">
-                <button
-                  className="btn-primary"
-                  onClick={() => handleAction(() => acceptInvitation(item.participant_id))}
-                  aria-label={`Accept challenge invitation for ${item.name}`}
-                >
-                  Accept
-                </button>
-                <button
-                  className="btn-ghost"
-                  onClick={() => handleAction(() => declineInvitation(item.participant_id))}
-                  aria-label={`Decline challenge invitation for ${item.name}`}
-                >
-                  Decline
-                </button>
-              </div>
-            )}
-          />
+              ))}
+            </div>
+          </section>
 
           <FriendsColumn
             title="Incoming requests"
@@ -199,16 +203,7 @@ function FriendsColumn({ title, emptyText, items, renderActions, renderItem }) {
       {(!items || items.length === 0) && <p className="muted">{emptyText}</p>}
       <div className="friends-list">
         {items?.map((item) => (
-          renderItem ? (
-            <div key={item.id || item.participant_id || item.challenge_id} className="friend-row">
-              <div className="friend-row-left">
-                {renderItem(item)}
-              </div>
-              {renderActions ? renderActions(item) : null}
-            </div>
-          ) : (
-            <FriendRow key={item.id} item={item} renderActions={renderActions} />
-          )
+          <FriendRow key={item.id || item.participant_id || item.challenge_id} item={item} renderActions={renderActions} />
         ))}
       </div>
     </section>
