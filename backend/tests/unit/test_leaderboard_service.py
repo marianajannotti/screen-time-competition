@@ -71,15 +71,10 @@ class LeaderboardServiceTestCase(unittest.TestCase):
         Returns:
             None
         """
-        hours = minutes // 60
-        remaining_minutes = minutes % 60
-        
         log = ScreenTimeLog(
             user_id=user_id,
             app_name="Total",
-            hours=hours,
-            minutes=remaining_minutes,
-            total_minutes=minutes,
+            screen_time_minutes=minutes,
             date=log_date
         )
         db.session.add(log)

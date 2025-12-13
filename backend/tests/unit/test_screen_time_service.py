@@ -92,9 +92,11 @@ class TestCreateEntry(ScreenTimeServiceTestCase):
         entry = ScreenTimeService.create_entry(self.test_user.id, data)
         
         self.assertEqual(entry.app_name, "Total")
-        self.assertEqual(entry.hours, 2)
-        self.assertEqual(entry.minutes, 15)
-        self.assertEqual(entry.total_minutes, 135)
+        self.assertEqual(entry.screen_time_minutes, 135)
+        # Check the computed fields from to_dict()
+        entry_dict = entry.to_dict()
+        self.assertEqual(entry_dict["hours"], 2)
+        self.assertEqual(entry_dict["minutes"], 15)
 
     def test_create_entry_with_custom_date(self):
         """Verify that entry is created with custom date.
@@ -146,7 +148,7 @@ class TestCreateEntry(ScreenTimeServiceTestCase):
         with self.assertRaises(ValidationError) as context:
             ScreenTimeService.create_entry(self.test_user.id, data)
         
-        self.assertIn("minutes must be between 0 and 59", str(context.exception))
+        self.assertIn("Minutes must be between 0 and 59", str(context.exception))
 
     def test_create_entry_negative_hours(self):
         """Verify that negative hours raise ValidationError.
@@ -163,7 +165,7 @@ class TestCreateEntry(ScreenTimeServiceTestCase):
         with self.assertRaises(ValidationError) as context:
             ScreenTimeService.create_entry(self.test_user.id, data)
         
-        self.assertIn("hours must be non-negative", str(context.exception))
+        self.assertIn("Hours must be zero or greater", str(context.exception))
 
     def test_create_entry_negative_minutes(self):
         """Verify that negative minutes raise ValidationError.
@@ -180,7 +182,7 @@ class TestCreateEntry(ScreenTimeServiceTestCase):
         with self.assertRaises(ValidationError) as context:
             ScreenTimeService.create_entry(self.test_user.id, data)
         
-        self.assertIn("minutes must be between 0 and 59", str(context.exception))
+        self.assertIn("Minutes must be between 0 and 59", str(context.exception))
 
     def test_create_entry_both_hours_and_minutes_zero(self):
         """Verify that zero hours and minutes raise ValidationError.
@@ -197,7 +199,7 @@ class TestCreateEntry(ScreenTimeServiceTestCase):
         with self.assertRaises(ValidationError) as context:
             ScreenTimeService.create_entry(self.test_user.id, data)
         
-        self.assertIn("must log at least 1 minute", str(context.exception))
+        self.assertIn("Total screen time must be greater than zero", str(context.exception))
 
     def test_create_entry_invalid_date_format(self):
         """Verify that invalid date format raises ValidationError.
@@ -215,7 +217,7 @@ class TestCreateEntry(ScreenTimeServiceTestCase):
         with self.assertRaises(ValidationError) as context:
             ScreenTimeService.create_entry(self.test_user.id, data)
         
-        self.assertIn("Invalid date format", str(context.exception))
+        self.assertIn("date must be formatted as YYYY-MM-DD", str(context.exception))
 
 
 class TestGetEntries(ScreenTimeServiceTestCase):
@@ -335,7 +337,7 @@ class TestGetEntries(ScreenTimeServiceTestCase):
                 date_str="invalid-date"
             )
         
-        self.assertIn("Invalid date format", str(context.exception))
+        self.assertIn("date must be formatted as YYYY-MM-DD", str(context.exception))
 
     def test_get_entries_different_user(self):
         """Verify that entries are filtered by user.

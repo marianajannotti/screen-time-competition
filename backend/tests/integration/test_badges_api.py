@@ -66,17 +66,14 @@ class BadgesAPITestCase(unittest.TestCase):
         self.assertIn("message", resp.get_json())
 
     def test_user_badges_access_control(self):
-        # Create another user
-        payload = {
-            "username": "other",
-            "email": "other@example.com",
-            "password": "pass12345",
-        }
-        r = self.client.post("/api/auth/register", json=payload)
-        self.assertEqual(r.status_code, 201)
+        # Create another user directly in the database (not via API to avoid auto-login)
+        from backend.models import User
+        from backend.database import db
+        other = User(username="other", email="other@example.com", password_hash="hashed")
+        db.session.add(other)
+        db.session.commit()
 
         # Attempt to get other user's badges should be forbidden
-        other = User.query.filter_by(username="other").first()
         resp = self.client.get(f"/api/users/{other.id}/badges")
         self.assertEqual(resp.status_code, 403)
 

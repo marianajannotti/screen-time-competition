@@ -25,10 +25,15 @@ class BadgeAchievementServiceTestCase(unittest.TestCase):
         Returns:
             None
         """
+        from backend.services import BadgeService
+        
         self.app = create_app("testing")
         self.app_context = self.app.app_context()
         self.app_context.push()
         db.create_all()
+        
+        # Initialize badges
+        BadgeService.initialize_badges()
 
         # Create test user
         self.test_user = User(

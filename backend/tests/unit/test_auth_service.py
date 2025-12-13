@@ -280,7 +280,7 @@ class TestUserAuthentication(AuthServiceTestCase):
         user, error = AuthService.authenticate_user("nonexistent", "password123")
         
         self.assertIsNone(user)
-        self.assertEqual(error, "Invalid username or password")
+        self.assertEqual(error, "Invalid username/email or password")
 
     def test_authenticate_invalid_password(self):
         """Verify that invalid password fails authentication.
@@ -291,7 +291,7 @@ class TestUserAuthentication(AuthServiceTestCase):
         user, error = AuthService.authenticate_user("testuser", "wrongpassword")
         
         self.assertIsNone(user)
-        self.assertEqual(error, "Invalid username or password")
+        self.assertEqual(error, "Invalid username/email or password")
 
     def test_authenticate_empty_username(self):
         """Verify that empty username fails authentication.
@@ -302,7 +302,7 @@ class TestUserAuthentication(AuthServiceTestCase):
         user, error = AuthService.authenticate_user("", "password123")
         
         self.assertIsNone(user)
-        self.assertEqual(error, "Username is required")
+        self.assertEqual(error, "Username/email and password are required")
 
     def test_authenticate_empty_password(self):
         """Verify that empty password fails authentication.
@@ -313,7 +313,7 @@ class TestUserAuthentication(AuthServiceTestCase):
         user, error = AuthService.authenticate_user("testuser", "")
         
         self.assertIsNone(user)
-        self.assertEqual(error, "Password is required")
+        self.assertEqual(error, "Username/email and password are required")
 
 
 class TestPasswordResetTokens(AuthServiceTestCase):

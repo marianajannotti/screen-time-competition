@@ -198,7 +198,7 @@ class AuthAPIIntegrationTestCase(unittest.TestCase):
 
         self.assertEqual(response.status_code, 401)
         response_data = json.loads(response.data)
-        self.assertEqual(response_data["error"], "Invalid username or password")
+        self.assertEqual(response_data["error"], "Invalid username/email or password")
 
     def test_login_nonexistent_user(self):
         """Test login with nonexistent username.
@@ -219,7 +219,7 @@ class AuthAPIIntegrationTestCase(unittest.TestCase):
 
         self.assertEqual(response.status_code, 401)
         response_data = json.loads(response.data)
-        self.assertEqual(response_data["error"], "Invalid username or password")
+        self.assertEqual(response_data["error"], "Invalid username/email or password")
 
     def test_login_missing_fields(self):
         """Test login with missing required fields.
@@ -240,7 +240,7 @@ class AuthAPIIntegrationTestCase(unittest.TestCase):
 
         self.assertEqual(response.status_code, 400)
         response_data = json.loads(response.data)
-        self.assertEqual(response_data["error"], "Missing username or password")
+        self.assertEqual(response_data["error"], "Username/email and password are required")
 
     def test_logout_success(self):
         """Test successful user logout.
@@ -324,7 +324,7 @@ class AuthAPIIntegrationTestCase(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         response_data = json.loads(response.data)
-        self.assertEqual(response_data["message"], "Password reset email sent")
+        self.assertEqual(response_data["message"], "If an account with that email exists, a password reset link has been sent.")
         mock_send_email.assert_called_once()
 
     def test_forgot_password_nonexistent_email(self):
@@ -343,9 +343,10 @@ class AuthAPIIntegrationTestCase(unittest.TestCase):
             content_type="application/json"
         )
 
-        self.assertEqual(response.status_code, 404)
+        # API returns 200 for security (don't reveal if email exists)
+        self.assertEqual(response.status_code, 200)
         response_data = json.loads(response.data)
-        self.assertEqual(response_data["error"], "Email not found")
+        self.assertEqual(response_data["message"], "If an account with that email exists, a password reset link has been sent.")
 
     def test_forgot_password_missing_email(self):
         """Test password reset request with missing email.
@@ -375,7 +376,7 @@ class AuthAPIIntegrationTestCase(unittest.TestCase):
 
         reset_data = {
             "token": reset_token,
-            "password": "newpassword123"
+            "new_password": "newpassword123"
         }
 
         response = self.client.post(
@@ -386,7 +387,7 @@ class AuthAPIIntegrationTestCase(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         response_data = json.loads(response.data)
-        self.assertEqual(response_data["message"], "Password reset successful")
+        self.assertEqual(response_data["message"], "Password has been reset successfully")
 
         # Verify password was actually changed by trying to login with new password
         login_response = self.client.post(
@@ -407,7 +408,7 @@ class AuthAPIIntegrationTestCase(unittest.TestCase):
         """
         reset_data = {
             "token": "invalid_token",
-            "password": "newpassword123"
+            "new_password": "newpassword123"
         }
 
         response = self.client.post(
@@ -439,7 +440,7 @@ class AuthAPIIntegrationTestCase(unittest.TestCase):
 
         self.assertEqual(response.status_code, 400)
         response_data = json.loads(response.data)
-        self.assertEqual(response_data["error"], "Token and password are required")
+        self.assertEqual(response_data["error"], "Token and new password are required")
 
 
 if __name__ == '__main__':

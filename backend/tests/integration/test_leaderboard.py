@@ -142,8 +142,8 @@ class TestGlobalLeaderboardEndpoint(LeaderboardAPITestCase):
 
         self.assertEqual(response.status_code, 200)
         data = response.get_json()
-        # Both users are included; alice ranks higher with streak
-        self.assertEqual(len(data["leaderboard"]), 2)
+        # Only users with screen time logs are included
+        self.assertEqual(len(data["leaderboard"]), 1)
         self.assertEqual(data["leaderboard"][0]["username"], "alice")
 
     def test_ranking_by_streak_descending(self):

@@ -119,6 +119,7 @@ class LeaderboardService:
         """Get the global leaderboard ranked by highest streak.
 
         Tiebreaker: Lower average screen time wins.
+        Only includes users with screen time data logged this month.
 
         Args:
             limit: Maximum number of users to return.
@@ -135,31 +136,26 @@ class LeaderboardService:
         user_stats = []
         for user in users:
             stats = LeaderboardService.compute_user_monthly_stats(user.id)
-            user_stats.append({
-                "user_id": user.id,
-                "username": user.username,
-                "avg_per_day": stats["avg_per_day"],
-                "total_minutes": stats["total_minutes"],
-                "days_logged": stats["days_logged"],
-                "streak": stats["streak"],
-            })
+            
+            # Only include users with logged data
+            if stats["days_logged"] > 0:
+                user_stats.append({
+                    "user_id": user.id,
+                    "username": user.username,
+                    "avg_per_day": stats["avg_per_day"],
+                    "total_minutes": stats["total_minutes"],
+                    "days_logged": stats["days_logged"],
+                    "streak": stats["streak"],
+                })
 
         # Sort by:
         # 1. Streak descending (higher streak = better)
         # 2. Avg screen time ascending (lower = better) as tiebreaker
-        # Users with no data go to the bottom
         def sort_key(u):
             streak = u["streak"] or 0
             avg = u["avg_per_day"]
-
-            if avg is None:
-                # No data at all: sort to bottom, then by username
-                return (1, 0, 0, u["username"])
-            # The case where streak > 0 and avg is None cannot occur because
-            # streak is only > 0 when days_logged > 0, which guarantees avg_per_day is calculated.
-
             # Normal case: sort by streak desc, then avg asc
-            return (0, -streak, avg, u["username"])
+            return (-streak, avg, u["username"])
 
         user_stats.sort(key=sort_key)
 
