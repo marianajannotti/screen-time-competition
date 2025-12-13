@@ -5,9 +5,9 @@ Handles user registration, login, logout
 
 from flask import Blueprint, request, jsonify, make_response
 from flask_login import login_user, logout_user, login_required, current_user
-from .database import db
-from .auth_service import AuthService
-from .utils import add_api_headers
+from ..database import db
+from ..services.auth_service import AuthService
+from ..utils.helpers import add_api_headers
 
 # Create blueprint
 auth_bp = Blueprint("auth", __name__, url_prefix="/api/auth")

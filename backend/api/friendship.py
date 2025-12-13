@@ -3,9 +3,9 @@
 from flask import Blueprint, jsonify, make_response, request
 from flask_login import current_user, login_required
 
-from .database import db
-from .friendship_service import FriendshipService, ValidationError
-from .utils import add_api_headers
+from ..database import db
+from ..services.friendship_service import FriendshipService, ValidationError
+from ..utils.helpers import add_api_headers
 
 friendship_bp = Blueprint(
     "friendship",

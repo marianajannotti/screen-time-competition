@@ -3,9 +3,9 @@
 from flask import Blueprint, jsonify, request, make_response
 from flask_login import current_user, login_required
 
-from .database import db
-from .screen_time_service import ScreenTimeService, ValidationError
-from .utils import add_api_headers
+from ..database import db
+from ..services.screen_time_service import ScreenTimeService, ValidationError
+from ..utils.helpers import add_api_headers
 
 screen_time_bp = Blueprint(
     "screen_time",

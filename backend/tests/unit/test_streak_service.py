@@ -10,7 +10,7 @@ from datetime import date
 from backend import create_app
 from backend.database import db
 from backend.models import User, Goal
-from backend.streak_service import StreakService
+from backend.services import StreakService
 
 
 class StreakServiceTestCase(unittest.TestCase):

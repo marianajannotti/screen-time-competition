@@ -3,7 +3,7 @@
 from datetime import date
 from typing import Dict, List
 
-from .models import Goal
+from ..models import Goal
 
 
 class StreakService:

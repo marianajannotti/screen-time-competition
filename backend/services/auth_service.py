@@ -6,8 +6,8 @@ Handles all authentication business logic separate from HTTP routes
 import secrets
 from datetime import datetime, timedelta
 from werkzeug.security import generate_password_hash, check_password_hash
-from .database import db
-from .models import User
+from ..database import db
+from ..models import User
 
 
 class AuthService:

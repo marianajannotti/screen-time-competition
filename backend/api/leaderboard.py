@@ -2,8 +2,8 @@
 
 from flask import Blueprint, jsonify, request, make_response, current_app
 
-from .leaderboard_service import LeaderboardService
-from .utils import add_api_headers
+from ..services.leaderboard_service import LeaderboardService
+from ..utils.helpers import add_api_headers
 
 leaderboard_bp = Blueprint(
     "leaderboard",
