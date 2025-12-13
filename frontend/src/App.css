@@ -80,9 +80,10 @@ button{padding:8px 12px;border-radius:6px}
 
 /* Redesigned metric cards */
 .metric-card{background:var(--card);border:1px solid rgba(15,23,42,0.06);border-radius:14px;padding:16px 18px;display:flex;flex-direction:column;gap:10px;box-shadow:0 6px 18px rgba(2,6,23,0.05)}
-.metric-card .card-head{display:flex;align-items:center;gap:10px;font-weight:600;font-size:0.95rem}
-.metric-card .card-head .title{flex:1;color:#222}
-.metric-card .add-btn{background:transparent;border:none;border-radius:0;width:28px;height:28px;cursor:pointer;font-size:20px;line-height:1;display:flex;align-items:center;justify-content:center;color:#555;position:relative;top:-6px;padding:0}
+.metric-card .card-head{display:flex;align-items:center;justify-content:space-between;font-weight:600;font-size:0.95rem;margin-bottom:8px}
+.metric-card .card-head .title{color:#222}
+.metric-card .card-head .icon{display:none}
+.metric-card .add-btn{background:transparent;border:none;border-radius:6px;width:28px;height:28px;cursor:pointer;font-size:20px;line-height:1;display:flex;align-items:center;justify-content:center;color:#555;padding:0}
 .metric-card .add-btn:hover{color:#222}
 .metric-card .add-btn:hover{background:#f6f7fb}
 .metric-card .sub-row{display:flex;align-items:center;justify-content:space-between;font-size:0.8rem;color:#555}
