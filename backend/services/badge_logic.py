@@ -2,7 +2,6 @@
 
 from datetime import timedelta, date
 from sqlalchemy import func, and_
-from ..database import db
 from ..models import User, ScreenTimeLog, Friendship  
 from .badge_service import BadgeService
 from .screen_time_service import ScreenTimeService
@@ -30,16 +29,14 @@ class BadgeLogic:
         
         awarded_badges = []
         
-        # Wrap the badge awarding in a single transaction for atomicity
+        # Check all badge types (transaction is already managed by the caller)
         try:
-            with db.session.begin():
-                awarded_badges.extend(BadgeLogic._check_streak_badges(user))
-                awarded_badges.extend(BadgeLogic._check_reduction_badges(user))
-                awarded_badges.extend(BadgeLogic._check_social_badges(user))
-                awarded_badges.extend(BadgeLogic._check_leaderboard_badges(user))
-                awarded_badges.extend(BadgeLogic._check_prestige_badges(user))
+            awarded_badges.extend(BadgeLogic._check_streak_badges(user))
+            awarded_badges.extend(BadgeLogic._check_reduction_badges(user))
+            awarded_badges.extend(BadgeLogic._check_social_badges(user))
+            awarded_badges.extend(BadgeLogic._check_leaderboard_badges(user))
+            awarded_badges.extend(BadgeLogic._check_prestige_badges(user))
         except Exception as e:
-            db.session.rollback()
             print(f"Error checking badges for user {user_id}: {str(e)}")
             return []
         
