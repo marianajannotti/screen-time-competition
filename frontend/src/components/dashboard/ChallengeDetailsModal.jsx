@@ -214,6 +214,15 @@ export default function ChallengeDetailsModal({ challenge, currentUser, onClose,
               })}
             </div>
           )}
+          {isCreator && challengeStatus !== 'completed' && (
+            <button
+              className="btn-secondary"
+              onClick={() => setShowEditModal(true)}
+              style={{marginTop:12,width:'100%'}}
+            >
+              + Invite More Friends
+            </button>
+          )}
         </div>
 
         {/* Actions */}

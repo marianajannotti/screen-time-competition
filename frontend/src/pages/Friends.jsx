@@ -106,17 +106,15 @@ export default function Friends() {
             emptyText="No pending challenge invitations."
             items={challengeInvitations}
             renderItem={(item) => (
-              <div className="friends-item-content">
+              <>
+                <div className="avatar-circle">{(item.owner_username || '?').slice(0, 2).toUpperCase()}</div>
                 <div>
-                  <div style={{fontWeight:600}}>{item.name}</div>
-                  <div style={{fontSize:13,color:'#64748b',marginTop:4}}>
+                  <div style={{fontWeight:600}}>From {item.owner_username || 'Unknown'}</div>
+                  <div style={{fontSize:13,color:'#64748b'}}>
                     {item.target_app === '__TOTAL__' ? 'Total Screen Time' : item.target_app} • {item.target_minutes}min/day
                   </div>
-                  <div style={{fontSize:12,color:'#94a3b8',marginTop:2}}>
-                    {new Date(item.start_date).toLocaleDateString()} - {new Date(item.end_date).toLocaleDateString()}
-                  </div>
                 </div>
-              </div>
+              </>
             )}
             renderActions={(item) => (
               <div className="friends-actions">
@@ -191,7 +189,7 @@ export default function Friends() {
   )
 }
 
-function FriendsColumn({ title, emptyText, items, renderActions }) {
+function FriendsColumn({ title, emptyText, items, renderActions, renderItem }) {
   return (
     <section className="card friends-column">
       <div className="friends-column-header">
@@ -201,7 +199,16 @@ function FriendsColumn({ title, emptyText, items, renderActions }) {
       {(!items || items.length === 0) && <p className="muted">{emptyText}</p>}
       <div className="friends-list">
         {items?.map((item) => (
-          <FriendRow key={item.id} item={item} renderActions={renderActions} />
+          renderItem ? (
+            <div key={item.id || item.participant_id || item.challenge_id} className="friend-row">
+              <div className="friend-row-left">
+                {renderItem(item)}
+              </div>
+              {renderActions ? renderActions(item) : null}
+            </div>
+          ) : (
+            <FriendRow key={item.id} item={item} renderActions={renderActions} />
+          )
         ))}
       </div>
     </section>

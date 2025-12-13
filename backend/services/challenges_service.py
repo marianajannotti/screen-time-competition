@@ -284,7 +284,7 @@ class ChallengesService:
             user_id: ID of the user
             
         Returns:
-            List of challenge dictionaries with invitation details
+            List of challenge dictionaries with invitation details and owner info
         """
         # Get all pending participations for user
         participations = ChallengeParticipant.query.filter_by(
@@ -299,6 +299,8 @@ class ChallengesService:
             if challenge.status != 'deleted':  # Don't show deleted challenges
                 challenge_dict = challenge.to_dict()
                 challenge_dict['participant_id'] = participation.participant_id
+                # Add owner information
+                challenge_dict['owner_username'] = challenge.owner.username if challenge.owner else 'Unknown'
                 invitations.append(challenge_dict)
         
         return invitations

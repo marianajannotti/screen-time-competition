@@ -33,6 +33,11 @@ export default function EditChallengeModal({ challenge, currentUser, onClose, on
           .map(f => f.counterpart)
           .filter(Boolean)
           .filter(friend => !existingParticipantIds.has(getUserId(friend)))
+        
+        console.log('Existing participant IDs:', Array.from(existingParticipantIds))
+        console.log('All friends:', (data.friends || []).map(f => f.counterpart?.username))
+        console.log('Available to invite:', acceptedFriends.map(f => f.username))
+        
         setFriends(acceptedFriends)
       } catch (err) {
         console.error('Error fetching friends:', err)
@@ -41,7 +46,7 @@ export default function EditChallengeModal({ challenge, currentUser, onClose, on
       }
     })()
     return () => { mounted = false }
-  }, [currentUser])
+  }, [currentUser, existingParticipantIds])
 
   function toggle(id) {
     setSelected(s => s.includes(id) ? s.filter(x=>x!==id) : [...s, id])
@@ -100,9 +105,11 @@ export default function EditChallengeModal({ challenge, currentUser, onClose, on
             <input value={name} onChange={(e)=>setName(e.target.value)} />
           </label>
           
-          {friends.length > 0 && (
-            <div>
-              <label style={{display:'block',marginBottom:8}}>Invite More Friends</label>
+          <div>
+            <label style={{display:'block',marginBottom:8}}>Invite More Friends</label>
+            {friends.length === 0 ? (
+              <p className="muted" style={{fontSize:13,margin:'8px 0'}}>All your friends are already in this challenge or you have no friends to invite.</p>
+            ) : (
               <div style={{display:'flex',flexWrap:'wrap',gap:8}}>
                 {friends.map(f => (
                   <button 
@@ -115,8 +122,8 @@ export default function EditChallengeModal({ challenge, currentUser, onClose, on
                   </button>
                 ))}
               </div>
-            </div>
-          )}
+            )}
+          </div>
           
           <div style={{display:'flex',gap:8}}>
             <button className="btn-primary" type="submit" style={{flex:1}}>Save Changes</button>
