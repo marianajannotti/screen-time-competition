@@ -82,12 +82,14 @@ def create_app(config_name: str | None = None) -> Flask:
         return User.query.get(int(user_id))
 
     # Register blueprints
-    from .auth import auth_bp
-    from .screen_time import screen_time_bp
-    from .friendship import friendship_bp
-    from .badges import badges_bp
-    from .leaderboard import leaderboard_bp
-    from .challenges import challenges_bp
+    from .api import (
+        auth_bp,
+        screen_time_bp,
+        friendship_bp,
+        badges_bp,
+        leaderboard_bp,
+        challenges_bp,
+    )
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(screen_time_bp)

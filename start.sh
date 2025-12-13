@@ -51,9 +51,9 @@ else
 fi
 
 # Check if frontend dependencies are installed
-if [ ! -d "offy-front/node_modules" ]; then
+if [ ! -d "frontend/node_modules" ]; then
     echo "⚠️  Frontend dependencies not found. Installing..."
-    cd offy-front && npm install && cd ..
+    cd frontend && npm install && cd ..
 fi
 
 # Function to cleanup background processes on exit
@@ -75,7 +75,7 @@ fi
 
 # Start backend
 echo "📦 Starting Flask backend on http://localhost:5001..."
-python run.py &
+python run_backend.py &
 BACKEND_PID=$!
 
 # Wait a bit for backend to start
@@ -83,7 +83,7 @@ sleep 2
 
 # Start frontend
 echo "⚛️  Starting Vite frontend on http://localhost:5173..."
-cd offy-front && npm run dev &
+cd frontend && npm run dev &
 FRONTEND_PID=$!
 
 echo ""

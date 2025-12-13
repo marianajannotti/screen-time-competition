@@ -26,10 +26,10 @@ A web application for friendly screen time competition - track daily usage, set 
 3. **Install dependencies:**
    ```bash
    # Backend
-   pip install -r requirements.txt
+   pip install -r backend/requirements.txt
    
    # Frontend
-   cd offy-front && npm install && cd ..
+   cd frontend && npm install && cd ..
    ```
 
 4. **Create `.env` file in project root:**
@@ -67,12 +67,12 @@ This automatically starts both servers:
 **Terminal 1 - Backend:**
 ```bash
 source venv/bin/activate  # Activate venv if created
-python run.py
+python run_backend.py
 ```
 
 **Terminal 2 - Frontend:**
 ```bash
-cd offy-front
+cd frontend
 npm run dev
 ```
 
