@@ -3,7 +3,7 @@
 const delay = (ms = 400) => new Promise((res) => setTimeout(res, ms))
 
 // In-memory mock DB (persist in localStorage to survive reloads)
-const STORAGE_KEY = 'offy_mock_db_v1'
+const STORAGE_KEY = 'offy_mock_db_v2' // bumped to v2 for challenges update
 const initial = {
   users: [
     { user_id: 'u1', username: 'demo', email: 'demo@example.com', profile_picture: '', streak_count: 2, total_points: 120 },
@@ -18,6 +18,32 @@ const initial = {
   screenTimeLogs: [],
   goals: [],
   friendships: [],
+  challenges: [
+    {
+      challenge_id: 'c1',
+      name: 'Weekly Screen Time Challenge',
+      description: 'Keep your daily screen time under 2 hours for a week!',
+      creator_id: 'u1',
+      start_date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+      end_date: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+      criteria: { app: '__TOTAL__', targetMinutes: 120 },
+      members: ['u1', 'u2', 'u3'],
+      active: true,
+      created_at: new Date().toISOString(),
+    },
+    {
+      challenge_id: 'c2',
+      name: 'YouTube Detox',
+      description: 'Limit YouTube to 30 minutes per day',
+      creator_id: 'u2',
+      start_date: new Date().toISOString().slice(0, 10),
+      end_date: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+      criteria: { app: 'YouTube', targetMinutes: 30 },
+      members: ['u1', 'u2'],
+      active: true,
+      created_at: new Date().toISOString(),
+    },
+  ],
 }
 
 function load() {
@@ -291,21 +317,32 @@ export async function getChallenges(user_id) {
   await delay(120)
   const db = load()
   db.challenges = db.challenges || []
-  // return challenges owned by user or where user is a member
-  const list = db.challenges.filter((c) => c.owner === user_id || (Array.isArray(c.members) && c.members.includes(user_id)))
+  
+  // For demo purposes, update challenges to include the current user
+  db.challenges.forEach(c => {
+    if (c.creator_id === 'u1') c.creator_id = user_id
+    if (!c.members.includes(user_id)) c.members.push(user_id)
+  })
+  
+  // return challenges created by user or where user is a member
+  const list = db.challenges.filter((c) => c.creator_id === user_id || (Array.isArray(c.members) && c.members.includes(user_id)))
   return { challenges: list }
 }
 
-export async function addChallenge({ owner, name, criteria, members = [] }) {
+export async function addChallenge({ owner, creator_id, name, criteria, members = [], start_date, end_date, description }) {
   await delay(120)
   const db = load()
   db.challenges = db.challenges || []
   const challenge = {
     challenge_id: genId('challenge'),
-    owner,
+    owner: owner || creator_id,
+    creator_id: creator_id || owner,
     name,
+    description: description || '',
     criteria, // { app: '__TOTAL__' | 'YouTube'..., targetMinutes }
     members: Array.isArray(members) ? members : [],
+    start_date: start_date || new Date().toISOString().slice(0, 10),
+    end_date: end_date || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
     created_at: new Date().toISOString(),
     active: true,
   }

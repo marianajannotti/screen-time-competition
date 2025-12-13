@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { friendshipApi } from '../api/friendshipApi'
+import { getPendingInvitations, acceptInvitation, declineInvitation } from '../api/challengesApi'
 import { useAuth } from '../contexts/AuthContext'
 
 export default function Friends() {
@@ -9,23 +10,28 @@ export default function Friends() {
   const [username, setUsername] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [data, setData] = useState({ friends: [], incoming: [], outgoing: [] })
+  const [challengeInvitations, setChallengeInvitations] = useState([])
 
   // Quick indicator to adjust empty-state copy
   const hasAny = useMemo(
     () =>
-      (data.friends?.length || 0) + (data.incoming?.length || 0) + (data.outgoing?.length || 0) > 0,
-    [data],
+      (data.friends?.length || 0) + (data.incoming?.length || 0) + (data.outgoing?.length || 0) + (challengeInvitations?.length || 0) > 0,
+    [data, challengeInvitations],
   )
 
-  // Fetch friendship lists from the backend
+  // Fetch friendship lists and challenge invitations from the backend
   const load = useCallback(async () => {
     setLoading(true)
     setError(null)
     try {
-      const res = await friendshipApi.list()
-      setData(res)
+      const [friendsRes, invitationsRes] = await Promise.all([
+        friendshipApi.list(),
+        getPendingInvitations()
+      ])
+      setData(friendsRes)
+      setChallengeInvitations(invitationsRes || [])
     } catch (err) {
-      setError(err.message || 'Failed to load friends')
+      setError(err.message || 'Failed to load data')
     } finally {
       setLoading(false)
     }
@@ -95,6 +101,43 @@ export default function Friends() {
         <div className="muted">Loading friends…</div>
       ) : (
         <div className="friends-grid">
+          <FriendsColumn
+            title="Challenge invitations"
+            emptyText="No pending challenge invitations."
+            items={challengeInvitations}
+            renderItem={(item) => (
+              <div className="friends-item-content">
+                <div>
+                  <div style={{fontWeight:600}}>{item.name}</div>
+                  <div style={{fontSize:13,color:'#64748b',marginTop:4}}>
+                    {item.target_app === '__TOTAL__' ? 'Total Screen Time' : item.target_app} • {item.target_minutes}min/day
+                  </div>
+                  <div style={{fontSize:12,color:'#94a3b8',marginTop:2}}>
+                    {new Date(item.start_date).toLocaleDateString()} - {new Date(item.end_date).toLocaleDateString()}
+                  </div>
+                </div>
+              </div>
+            )}
+            renderActions={(item) => (
+              <div className="friends-actions">
+                <button
+                  className="btn-primary"
+                  onClick={() => handleAction(() => acceptInvitation(item.participant_id))}
+                  aria-label={`Accept challenge invitation for ${item.name}`}
+                >
+                  Accept
+                </button>
+                <button
+                  className="btn-ghost"
+                  onClick={() => handleAction(() => declineInvitation(item.participant_id))}
+                  aria-label={`Decline challenge invitation for ${item.name}`}
+                >
+                  Decline
+                </button>
+              </div>
+            )}
+          />
+
           <FriendsColumn
             title="Incoming requests"
             emptyText="No incoming requests."

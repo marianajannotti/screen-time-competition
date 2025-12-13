@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
-import { getFriends, getFriendIds, getAllUsers, addFriendship, addChallenge } from '../../api/mockApi'
+import { friendshipApi } from '../../api/friendshipApi'
+import { createChallenge } from '../../api/challengesApi'
 
 // Normalize user id from different possible shapes
 function getUserId(u) {
@@ -8,12 +9,16 @@ function getUserId(u) {
 
 export default function ChallengeModal({ onClose, onCreate, currentUser }) {
   const [friends, setFriends] = useState([])
-  const [showFindUsers, setShowFindUsers] = useState(false)
-  const [allUsers, setAllUsers] = useState([])
   const [name, setName] = useState('')
   const [app, setApp] = useState('__TOTAL__')
   const [hours, setHours] = useState(0)
   const [minutes, setMinutes] = useState(30)
+  const [startDate, setStartDate] = useState(() => new Date().toISOString().slice(0, 10))
+  const [endDate, setEndDate] = useState(() => {
+    const future = new Date()
+    future.setDate(future.getDate() + 7)
+    return future.toISOString().slice(0, 10)
+  })
   const [selected, setSelected] = useState([])
   
   useEffect(() => {
@@ -25,42 +30,15 @@ export default function ChallengeModal({ onClose, onCreate, currentUser }) {
           setFriends([])
           return
         }
-        const res = await getFriends(getUserId(currentUser))
+        const data = await friendshipApi.list()
         if (!mounted) return
-        let fetched = Array.isArray(res.friends) ? res.friends : []
-        
-        // Fallback: if empty, try getFriendIds and map to user objects via getAllUsers
-        if (fetched.length === 0) {
-          try {
-            const idsRes = await getFriendIds(getUserId(currentUser))
-            const ids = Array.isArray(idsRes.friendIds) ? idsRes.friendIds : []
-            if (ids.length > 0) {
-              const all = await getAllUsers(getUserId(currentUser))
-              const users = Array.isArray(all.users) ? all.users : []
-              fetched = users.filter(u => ids.includes(u.user_id))
-            }
-          } catch {
-            // ignore
-          }
-        }
-        
-        // If still empty, seed two demo friendships for convenience (only for demo user)
-        if (fetched.length === 0 && getUserId(currentUser)) {
-          try {
-            // avoid adding self or duplicates
-            const seedTargets = ['u2','u3'].filter(id => id !== getUserId(currentUser))
-            for (const t of seedTargets) {
-              await addFriendship(getUserId(currentUser), t)
-            }
-            // refresh
-            const refreshed = await getFriends(getUserId(currentUser))
-            fetched = Array.isArray(refreshed.friends) ? refreshed.friends : []
-          } catch {
-            // ignore seeding errors
-          }
-        }
-        setFriends(fetched)
-      } catch {
+        // Extract accepted friends from the response
+        const acceptedFriends = (data.friends || [])
+          .map(f => f.counterpart)
+          .filter(Boolean)
+        setFriends(acceptedFriends)
+      } catch (err) {
+        console.error('Error fetching friends:', err)
         if (!mounted) return
         setFriends([])
       }
@@ -68,54 +46,40 @@ export default function ChallengeModal({ onClose, onCreate, currentUser }) {
     return () => { mounted = false }
   }, [currentUser])
 
-  async function fetchAllUsers() {
-    try {
-      if (!currentUser || !getUserId(currentUser)) { 
-        setAllUsers([])
-        return 
-      }
-      const res = await getAllUsers(getUserId(currentUser))
-      setAllUsers(Array.isArray(res.users) ? res.users : [])
-    } catch {
-      setAllUsers([])
-    }
-  }
-
   function toggle(id) {
     setSelected(s => s.includes(id) ? s.filter(x=>x!==id) : [...s, id])
-  }
-
-  async function addAsFriend(userToAdd) {
-    try {
-      if (!currentUser || !getUserId(currentUser)) return
-      await addFriendship(getUserId(currentUser), userToAdd.user_id)
-      // refresh friends list
-      const res = await getFriends(getUserId(currentUser))
-      setFriends(Array.isArray(res.friends) ? res.friends : [])
-      // select the user for the challenge
-      setSelected(s => s.includes(userToAdd.user_id) ? s : [...s, userToAdd.user_id])
-    } catch {
-      // ignore
-    }
   }
 
   async function submit(e) {
     e.preventDefault()
     const total = (Number(hours)||0) * 60 + (Number(minutes)||0)
-    if (!name) return
-    if (!currentUser || !getUserId(currentUser)) return
-    const payload = { 
-      owner: getUserId(currentUser), 
-      name, 
-      criteria: { app, targetMinutes: total }, 
-      members: selected 
+    if (!name.trim()) {
+      alert('Challenge name is required')
+      return
     }
+    if (total < 0) {
+      alert('Target time cannot be negative')
+      return
+    }
+    if (!currentUser || !getUserId(currentUser)) return
+    
+    const payload = { 
+      name: name.trim(), 
+      target_app: app,
+      target_minutes: total,
+      start_date: startDate,
+      end_date: endDate,
+      invited_user_ids: selected.map(id => Number(id))
+    }
+    
     try {
-      await addChallenge(payload)
+      console.log('Creating challenge with payload:', payload)
+      await createChallenge(payload)
       onCreate && onCreate()
       onClose()
     } catch (err) {
-      onClose()
+      console.error('Failed to create challenge:', err)
+      alert(err.message || 'Failed to create challenge')
     }
   }
 
@@ -152,30 +116,33 @@ export default function ChallengeModal({ onClose, onCreate, currentUser }) {
               <input type="number" min={0} max={59} value={minutes} onChange={e=>setMinutes(e.target.value)} />
             </label>
           </div>
+          <div style={{display:'flex',gap:12}}>
+            <label style={{flex:1,display:'flex',flexDirection:'column',gap:4}}>
+              <span>Start Date</span>
+              <input type="date" value={startDate} onChange={e=>setStartDate(e.target.value)} />
+            </label>
+            <label style={{flex:1,display:'flex',flexDirection:'column',gap:4}}>
+              <span>End Date</span>
+              <input type="date" value={endDate} onChange={e=>setEndDate(e.target.value)} min={startDate} />
+            </label>
+          </div>
           <div>
-            <div style={{fontSize:13,fontWeight:600,marginBottom:6}}>Invite Friends</div>
+            <div style={{fontSize:13,fontWeight:600,marginBottom:6}}>Invite Friends (Optional)</div>
             {friends.length === 0 ? (
-              <div style={{display:'flex',flexDirection:'column',gap:8}}>
-                <div className="muted">You have no friends yet. Find users to add and invite them.</div>
-                <div style={{display:'flex',gap:8}}>
-                  <button type="button" className="btn-primary" onClick={async ()=>{ setShowFindUsers(true); await fetchAllUsers() }}>Find users</button>
-                  <button type="button" className="btn-ghost" onClick={()=>setShowFindUsers(false)}>Cancel</button>
-                </div>
-                {showFindUsers && (
-                  <div style={{display:'flex',flexWrap:'wrap',gap:8,marginTop:8}}>
-                    {allUsers.map(u => (
-                      <div key={u.user_id} style={{display:'flex',flexDirection:'column',gap:6}}>
-                        <button type="button" className={'btn-ghost'} onClick={()=>addAsFriend(u)}>{u.username}</button>
-                        <small style={{color:'#666'}}>Add friend & invite</small>
-                      </div>
-                    ))}
-                  </div>
-                )}
+              <div className="muted" style={{padding:8}}>
+                No friends yet. Add friends from the Friends page to invite them to challenges.
               </div>
             ) : (
               <div style={{display:'flex',flexWrap:'wrap',gap:8}}>
                 {friends.map(f => (
-                  <button key={f.user_id} type="button" className={selected.includes(f.user_id)?'btn-primary':'btn-ghost'} onClick={()=>toggle(f.user_id)}>{f.username}</button>
+                  <button 
+                    key={f.id} 
+                    type="button" 
+                    className={selected.includes(f.id) ? 'btn-primary' : 'btn-ghost'} 
+                    onClick={() => toggle(f.id)}
+                  >
+                    {f.username}
+                  </button>
                 ))}
               </div>
             )}

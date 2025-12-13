@@ -53,9 +53,9 @@ class ChallengesService:
         # Validate target_app
         target_app = data['target_app']
         
-        # Validate target_minutes
-        if not isinstance(data['target_minutes'], int) or data['target_minutes'] <= 0:
-            raise ValidationError('Target minutes must be a positive integer')
+        # Validate target_minutes (0 is valid for "no app" challenges)
+        if not isinstance(data['target_minutes'], int) or data['target_minutes'] < 0:
+            raise ValidationError('Target minutes must be a non-negative integer')
         target_minutes = data['target_minutes']
         
         # Parse and validate dates
@@ -66,9 +66,9 @@ class ChallengesService:
         except ValueError:
             raise ValidationError('Invalid date format. Use YYYY-MM-DD')
         
-        # Validate dates
-        if end_date <= start_date:
-            raise ValidationError('End date must be after start date')
+        # Validate dates (end_date can equal start_date for one-day challenges)
+        if end_date < start_date:
+            raise ValidationError('End date cannot be before start date')
         
         today = date.today()
         if start_date < today:
@@ -149,21 +149,95 @@ class ChallengesService:
         db.session.add(challenge)
         db.session.flush()  # Get challenge.challenge_id
         
-        # Add owner as participant
+        # Add owner as participant with 'accepted' status
         owner_participant = ChallengeParticipant(
             challenge_id=challenge.challenge_id,
-            user_id=owner_id
+            user_id=owner_id,
+            invitation_status='accepted'
         )
         db.session.add(owner_participant)
         
-        # Add invited users as participants (excluding owner)
+        # Add invited users as participants with 'pending' status (excluding owner)
         for user_id in invited_user_ids:
             if user_id != owner_id:
                 participant = ChallengeParticipant(
                     challenge_id=challenge.challenge_id,
-                    user_id=user_id
+                    user_id=user_id,
+                    invitation_status='pending'
                 )
                 db.session.add(participant)
+        
+        db.session.commit()
+        
+        # Recalculate challenge stats for owner from existing screen time logs
+        try:
+            from .screen_time_service import ScreenTimeService
+            ScreenTimeService.recalculate_challenge_stats(challenge.challenge_id, owner_id)
+        except Exception as e:
+            logger.error(f"Error recalculating challenge stats after creation: {e}")
+        
+        return challenge
+
+    @staticmethod
+    def update_challenge(
+        challenge_id: int,
+        user_id: int,
+        name: Optional[str] = None,
+        new_invited_user_ids: Optional[List[int]] = None
+    ) -> Challenge:
+        """
+        Update a challenge's name and/or add new participants.
+        
+        Args:
+            challenge_id: ID of the challenge to update
+            user_id: ID of the user making the update (must be owner)
+            name: Optional new name for the challenge
+            new_invited_user_ids: Optional list of new user IDs to invite
+            
+        Returns:
+            Updated Challenge object
+            
+        Raises:
+            ValidationError: If user is not the owner or validation fails
+        """
+        challenge = db.session.get(Challenge, challenge_id)
+        if not challenge:
+            raise ValidationError('Challenge not found')
+        
+        # Only owner can edit
+        if challenge.owner_id != user_id:
+            raise ValidationError('Only the challenge owner can edit it')
+        
+        # Cannot edit completed or deleted challenges
+        if challenge.status in ['completed', 'deleted']:
+            raise ValidationError(f'Cannot edit {challenge.status} challenges')
+        
+        # Update name if provided
+        if name is not None:
+            name = name.strip()
+            if not name:
+                raise ValidationError('Challenge name cannot be empty')
+            if len(name) > 200:
+                raise ValidationError('Challenge name must be 200 characters or less')
+            challenge.name = name
+        
+        # Add new participants if provided
+        if new_invited_user_ids:
+            # Validate new user IDs exist
+            ChallengesService.validate_user_ids(new_invited_user_ids, exclude_user_id=None)
+            
+            # Get existing participant user IDs
+            existing_participants = {p.user_id for p in challenge.participants}
+            
+            # Add only new participants with 'pending' invitation status
+            for user_id_to_add in new_invited_user_ids:
+                if user_id_to_add not in existing_participants:
+                    participant = ChallengeParticipant(
+                        challenge_id=challenge.challenge_id,
+                        user_id=user_id_to_add,
+                        invitation_status='pending'
+                    )
+                    db.session.add(participant)
         
         db.session.commit()
         
@@ -172,7 +246,7 @@ class ChallengesService:
     @staticmethod
     def get_user_challenges(user_id: int) -> List[Dict]:
         """
-        Get all challenges for a user (owned or participating), excluding deleted.
+        Get all accepted challenges for a user (owned or participating), excluding deleted and pending invitations.
         
         Args:
             user_id: ID of the user
@@ -180,9 +254,10 @@ class ChallengesService:
         Returns:
             List of challenge dictionaries with user stats
         """
-        # Get all participations for user
+        # Get all accepted participations for user
         participations = ChallengeParticipant.query.filter_by(
-            user_id=user_id
+            user_id=user_id,
+            invitation_status='accepted'
         ).all()
         
         challenges_data = []
@@ -199,6 +274,80 @@ class ChallengesService:
                 challenges_data.append(challenge_dict)
         
         return challenges_data
+
+    @staticmethod
+    def get_pending_invitations(user_id: int) -> List[Dict]:
+        """
+        Get all pending challenge invitations for a user.
+        
+        Args:
+            user_id: ID of the user
+            
+        Returns:
+            List of challenge dictionaries with invitation details
+        """
+        # Get all pending participations for user
+        participations = ChallengeParticipant.query.filter_by(
+            user_id=user_id,
+            invitation_status='pending'
+        ).all()
+        
+        invitations = []
+        for participation in participations:
+            challenge = participation.challenge
+            
+            if challenge.status != 'deleted':  # Don't show deleted challenges
+                challenge_dict = challenge.to_dict()
+                challenge_dict['participant_id'] = participation.participant_id
+                invitations.append(challenge_dict)
+        
+        return invitations
+
+    @staticmethod
+    def respond_to_invitation(user_id: int, participant_id: int, accept: bool) -> ChallengeParticipant:
+        """
+        Accept or decline a challenge invitation.
+        
+        Args:
+            user_id: ID of the user responding
+            participant_id: ID of the participant record
+            accept: True to accept, False to decline
+            
+        Returns:
+            Updated ChallengeParticipant object
+            
+        Raises:
+            ValidationError: If invitation not found or not pending
+        """
+        participation = db.session.get(ChallengeParticipant, participant_id)
+        
+        if not participation:
+            raise ValidationError('Invitation not found')
+        
+        if participation.user_id != user_id:
+            raise ValidationError('This invitation is not for you')
+        
+        if participation.invitation_status != 'pending':
+            raise ValidationError('Invitation has already been responded to')
+        
+        if accept:
+            participation.invitation_status = 'accepted'
+        else:
+            participation.invitation_status = 'declined'
+            # Optionally, we could delete declined invitations instead
+            # db.session.delete(participation)
+        
+        db.session.commit()
+        
+        # If accepted, recalculate challenge stats from existing screen time logs
+        if accept:
+            try:
+                from .screen_time_service import ScreenTimeService
+                ScreenTimeService.recalculate_challenge_stats(participation.challenge_id, user_id)
+            except Exception as e:
+                logger.error(f"Error recalculating challenge stats after accepting invitation: {e}")
+        
+        return participation
 
     @staticmethod
     def get_challenge_by_id(challenge_id: int, user_id: int) -> Tuple[Challenge, ChallengeParticipant]:
@@ -283,7 +432,8 @@ class ChallengesService:
                 'days_failed': participant.days_failed,
                 'average_daily_minutes': avg_daily,
                 'final_rank': participant.final_rank,
-                'is_winner': participant.is_winner
+                'is_winner': participant.is_winner,
+                'invitation_status': participant.invitation_status
             })
         
         # Sort by average daily screen time (lowest first, None values sort last)
