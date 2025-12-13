@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { minutesLabel } from '../utils/timeFormatters'
 import { getGlobalLeaderboard, getFriendships } from '../api/leaderboardApi'
+import crownIcon from '../assets/badges/crown-icon.png'
 
 export default function Leaderboard(){
   const { user } = useAuth()
@@ -140,7 +141,11 @@ export default function Leaderboard(){
                   <div className="name">{p ? (p.user_id === currentUserId ? `You (${p.username})` : p.username) : pos.charAt(0).toUpperCase()+pos.slice(1)}</div>
                   <div className="metric">{p? minutesLabel(p._avg) : '—'}</div>
                   <div className="streak" style={{fontSize:12, color:'#fff', opacity:0.8}}>{p ? `${p._streak || 0} day streak` : '—'}</div>
-                  {pos==='first' && <div className="crown" aria-hidden="true">👑</div>}
+                  {pos==='first' && (
+                    <div className="crown" aria-hidden="true">
+                      <img src={crownIcon} alt="Crown" style={{ width: '100px', height: '100px' }} />
+                    </div>
+                  )}
                 </div>
               </div>
             )
