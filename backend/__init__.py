@@ -88,6 +88,7 @@ def create_app(config_name: str | None = None) -> Flask:
         friendship_bp,
         badges_bp,
         leaderboard_bp,
+        challenges_bp,
     )
 
     app.register_blueprint(auth_bp)
@@ -95,6 +96,7 @@ def create_app(config_name: str | None = None) -> Flask:
     app.register_blueprint(friendship_bp)
     app.register_blueprint(badges_bp)
     app.register_blueprint(leaderboard_bp)
+    app.register_blueprint(challenges_bp)
 
     # Create database tables
     with app.app_context():

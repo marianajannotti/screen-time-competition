@@ -100,7 +100,8 @@ class ScreenTimeService:
 
     @staticmethod
     def create_entry(user_id: int, data: Dict) -> ScreenTimeLog:
-        """Create or update a screen time entry.
+        """
+        Create or update a screen time entry and update all relevant challenge stats for the user.
 
         If an entry already exists for the same user, app, and date,
         it will be updated with the new time. Otherwise, a new entry
@@ -115,6 +116,11 @@ class ScreenTimeService:
 
         Raises:
             ValidationError: If data is invalid.
+
+        Side Effects:
+            - Updates ChallengeParticipant stats for all active challenges the user is in (days_logged, total_screen_time_minutes, days_passed, days_failed).
+            - Triggers badge logic to check and award badges if criteria are met.
+            - Commits all changes to the database.
         """
         validated = ScreenTimeService._validate_payload(data)
         app_name, total_minutes, entry_date = validated
@@ -160,6 +166,84 @@ class ScreenTimeService:
             db.session.add(new_log)
             db.session.commit()
             log_to_return = new_log
+
+        # --- Challenge stats update logic ---
+        # Wrapped in try-except to ensure screen time log succeeds even if challenge stats fail
+        try:
+            from ..models import Challenge, ChallengeParticipant
+            from sqlalchemy.orm import selectinload
+            
+            # Find all active challenges for this user with eager loading to avoid N+1 queries
+            active_challenges = Challenge.query.join(ChallengeParticipant).filter(
+                ChallengeParticipant.user_id == user_id,
+                Challenge.status == 'active',
+                Challenge.start_date <= entry_date,
+                Challenge.end_date >= entry_date,
+                (Challenge.target_app == app_name) | (Challenge.target_app == '__TOTAL__')
+            ).options(selectinload(Challenge.participants)).all()
+            
+            # Fetch all relevant screen time logs once for all challenges
+            # Get the min/max date range across all challenges
+            if active_challenges:
+                # Bulk fetch all relevant ChallengeParticipant records for this user and these challenges
+                challenge_ids = [challenge.challenge_id for challenge in active_challenges]
+                participants = ChallengeParticipant.query.filter(
+                    ChallengeParticipant.challenge_id.in_(challenge_ids),
+                    ChallengeParticipant.user_id == user_id
+                ).all()
+                participant_map = {p.challenge_id: p for p in participants}
+                
+                min_start = min(c.start_date for c in active_challenges)
+                max_end = max(c.end_date for c in active_challenges)
+                
+                # Fetch all logs in this date range in a single query
+                all_logs = ScreenTimeLog.query.filter(
+                    ScreenTimeLog.user_id == user_id,
+                    ScreenTimeLog.date >= min_start,
+                    ScreenTimeLog.date <= max_end
+                ).all()
+                
+                # Process each challenge using the pre-fetched logs
+                for challenge in active_challenges:
+                    participant = participant_map.get(challenge.challenge_id)
+                    if not participant:
+                        continue
+                    
+                    # Filter logs for this specific challenge in Python
+                    relevant_logs = [
+                        log for log in all_logs
+                        if challenge.start_date <= log.date <= challenge.end_date
+                        and (challenge.target_app == '__TOTAL__' or log.app_name == challenge.target_app)
+                    ]
+                    
+                    # Calculate stats from the filtered logs
+                    if relevant_logs:
+                        # Group by date and sum minutes per day
+                        day_totals = {}
+                        for log in relevant_logs:
+                            day_totals[log.date] = day_totals.get(log.date, 0) + log.screen_time_minutes
+                        
+                        days_logged = len(day_totals)
+                        total_minutes = sum(day_totals.values())
+                        days_passed = sum(1 for daily_total in day_totals.values() if daily_total <= challenge.target_minutes)
+                        days_failed = days_logged - days_passed
+                    else:
+                        days_logged = 0
+                        total_minutes = 0
+                        days_passed = 0
+                        days_failed = 0
+                    
+                    # Update participant stats
+                    participant.days_logged = days_logged
+                    participant.total_screen_time_minutes = total_minutes
+                    participant.days_passed = days_passed
+                    participant.days_failed = days_failed
+            
+            db.session.commit()
+        except Exception as e:
+            db.session.rollback()  # Only rolls back challenge stats changes
+            logger.error(f"Error updating challenge stats for user {user_id}: {e}")
+            # Screen time log was already committed, so it succeeds regardless
 
         # Check and award badges after creating/updating a screen time entry
         try:
