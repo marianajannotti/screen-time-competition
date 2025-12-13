@@ -154,11 +154,12 @@ export default function Dashboard() {
     return d.toISOString().slice(0,10)
   })
   
+  const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']
   const chartData = {}
-  currentWeekDays.forEach(ds => {
+  currentWeekDays.forEach((ds, i) => {
     // Only show data for days up to and including today (not future days)
     if (ds > todayStr) return
-    
+
     // build day entry
     const dayLogs = logs.filter(l => l.date === ds)
     if (!dayLogs.length) return
@@ -170,9 +171,8 @@ export default function Dashboard() {
     else total = Object.values(apps).reduce((a,b)=>a+b,0)
     const stackedSum = Object.values(apps).reduce((a,b)=>a+b,0)
     const remainder = Math.max(0, total - stackedSum)
-    chartData[new Date(ds).toLocaleDateString('en-US',{weekday:'short'})] = { apps, remainder, total }
+    chartData[days[i]] = { apps, remainder, total }
   })
-  const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']
 
   // Loading state: Show spinner while fetching data from backend API
   if (loading) {
@@ -272,6 +272,7 @@ export default function Dashboard() {
         </aside>
 
         <section>
+          <div style={{fontWeight:600,fontSize:'1.1rem',marginBottom:8,marginLeft:2}}>Total Screen Time</div>
           <div className="top-apps-row">
             <div className="top-app-card" style={{ background: 'linear-gradient(180deg,#fff,#fafcff)' }}>
               <div className="app-inner">
@@ -291,7 +292,7 @@ export default function Dashboard() {
             ))}
           </div>
 
-          <div className="chart-card">
+          <div className="chart-card" style={{paddingLeft: '18px'}}>
             <h3>Last Week's Screen Time</h3>
             <WeeklyChart days={days} chartData={chartData} appColorMap={appColorMap} />
             <div className="chart-legend" style={{display:'flex',flexWrap:'wrap',gap:12,marginTop:10}}>
