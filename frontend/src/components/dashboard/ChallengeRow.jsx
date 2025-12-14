@@ -142,18 +142,20 @@ export default function ChallengeRow({ challenge, currentUser, onViewDetails }) 
       {/* Challenge name and status badges */}
       <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:8,flexWrap:'wrap',paddingRight: statusLabel ? 100 : 0}}>
         <div style={{fontWeight:600,fontSize:16,color:textColor}}>{challenge.name}</div>
-        <span style={{
-          fontSize:11,
-          padding:'3px 10px',
-          borderRadius:12,
-          backgroundColor: challengeStatus === 'active' ? '#dbeafe' : challengeStatus === 'completed' ? '#e5e7eb' : '#fef3c7',
-          color: challengeStatusColor,
-          fontWeight:600,
-          whiteSpace:'nowrap',
-          border: `1px solid ${challengeStatusColor}40`
-        }}>
-          {challengeStatusLabel}
-        </span>
+        {challengeStatus !== 'active' && (
+          <span style={{
+            fontSize:11,
+            padding:'3px 10px',
+            borderRadius:12,
+            backgroundColor: challengeStatus === 'completed' ? '#e5e7eb' : '#fef3c7',
+            color: challengeStatusColor,
+            fontWeight:600,
+            whiteSpace:'nowrap',
+            border: `1px solid ${challengeStatusColor}40`
+          }}>
+            {challengeStatusLabel}
+          </span>
+        )}
       </div>
       
       {/* Days remaining badge */}
