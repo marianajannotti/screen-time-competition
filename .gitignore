@@ -44,4 +44,4 @@ Thumbs.db
 cookies.txt
 
 # Logs
-*.logfrontend/.vite/
+*.log
