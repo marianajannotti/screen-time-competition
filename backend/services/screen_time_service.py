@@ -216,41 +216,18 @@ class ScreenTimeService:
                         and (challenge.target_app == '__TOTAL__' or log.app_name == challenge.target_app)
                     ]
                     
-                    # Calculate stats from the filtered logs
-                    if relevant_logs:
-                        # Group by date and sum minutes per day
-                        day_totals = {}
-                        for log in relevant_logs:
-                            day_totals[log.date] = day_totals.get(log.date, 0) + log.screen_time_minutes
-                        
-                        days_logged = len(day_totals)
-                        total_minutes = sum(day_totals.values())
-                        days_passed = sum(1 for daily_total in day_totals.values() if daily_total <= challenge.target_minutes)
-                        days_failed = days_logged - days_passed
-                        
-                        # Calculate today's specific status
-                        from datetime import date as date_class
-                        today = date_class.today()
-                        today_minutes = day_totals.get(today, 0)
-                        if today in day_totals:
-                            today_passed = today_minutes <= challenge.target_minutes
-                        else:
-                            today_passed = None  # No data for today
-                    else:
-                        days_logged = 0
-                        total_minutes = 0
-                        days_passed = 0
-                        days_failed = 0
-                        today_minutes = 0
-                        today_passed = None
+                    # Calculate stats from the filtered logs using helper method
+                    from datetime import date as date_class
+                    today = date_class.today()
+                    stats = ScreenTimeService._calculate_participant_stats(relevant_logs, challenge, today)
                     
                     # Update participant stats
-                    participant.days_logged = days_logged
-                    participant.total_screen_time_minutes = total_minutes
-                    participant.days_passed = days_passed
-                    participant.days_failed = days_failed
-                    participant.today_minutes = today_minutes
-                    participant.today_passed = today_passed
+                    participant.days_logged = stats['days_logged']
+                    participant.total_screen_time_minutes = stats['total_screen_time_minutes']
+                    participant.days_passed = stats['days_passed']
+                    participant.days_failed = stats['days_failed']
+                    participant.today_minutes = stats['today_minutes']
+                    participant.today_passed = stats['today_passed']
             
             db.session.commit()
         except Exception as e:
@@ -276,6 +253,53 @@ class ScreenTimeService:
                 logger.error(f"Badge logic error for user {user_id}: {e}")
 
         return log_to_return
+
+    @staticmethod
+    def _calculate_participant_stats(logs: list, challenge, today) -> dict:
+        """
+        Helper method to calculate challenge statistics from screen time logs.
+        
+        Args:
+            logs (list): Filtered list of ScreenTimeLog objects relevant to the challenge
+            challenge: Challenge object with target_minutes attribute
+            today: date object representing today's date
+            
+        Returns:
+            dict: Dictionary containing calculated stats (days_logged, total_minutes, etc.)
+        """
+        if logs:
+            # Group by date and sum minutes per day
+            day_totals = {}
+            for log in logs:
+                day_totals[log.date] = day_totals.get(log.date, 0) + log.screen_time_minutes
+            
+            days_logged = len(day_totals)
+            total_minutes = sum(day_totals.values())
+            days_passed = sum(1 for daily_total in day_totals.values() if daily_total <= challenge.target_minutes)
+            days_failed = days_logged - days_passed
+            
+            # Calculate today's specific status
+            today_minutes = day_totals.get(today, 0)
+            if today in day_totals:
+                today_passed = today_minutes <= challenge.target_minutes
+            else:
+                today_passed = None  # No data for today
+        else:
+            days_logged = 0
+            total_minutes = 0
+            days_passed = 0
+            days_failed = 0
+            today_minutes = 0
+            today_passed = None
+        
+        return {
+            'days_logged': days_logged,
+            'total_screen_time_minutes': total_minutes,
+            'days_passed': days_passed,
+            'days_failed': days_failed,
+            'today_minutes': today_minutes,
+            'today_passed': today_passed
+        }
 
     @staticmethod
     def recalculate_challenge_stats(challenge_id: int, user_id: int) -> None:
@@ -326,41 +350,18 @@ class ScreenTimeService:
                 # For specific app challenges, only include that app
                 filtered_logs = [log for log in relevant_logs if log.app_name == challenge.target_app]
             
-            # Calculate stats
-            if filtered_logs:
-                # Group by date and sum minutes per day
-                day_totals = {}
-                for log in filtered_logs:
-                    day_totals[log.date] = day_totals.get(log.date, 0) + log.screen_time_minutes
-                
-                days_logged = len(day_totals)
-                total_minutes = sum(day_totals.values())
-                days_passed = sum(1 for daily_total in day_totals.values() if daily_total <= challenge.target_minutes)
-                days_failed = days_logged - days_passed
-                
-                # Calculate today's specific status
-                from datetime import date as date_class
-                today = date_class.today()
-                today_minutes = day_totals.get(today, 0)
-                if today in day_totals:
-                    today_passed = today_minutes <= challenge.target_minutes
-                else:
-                    today_passed = None  # No data for today
-            else:
-                days_logged = 0
-                total_minutes = 0
-                days_passed = 0
-                days_failed = 0
-                today_minutes = 0
-                today_passed = None
+            # Calculate stats using helper method
+            from datetime import date as date_class
+            today = date_class.today()
+            stats = ScreenTimeService._calculate_participant_stats(filtered_logs, challenge, today)
             
             # Update participant stats
-            participant.days_logged = days_logged
-            participant.total_screen_time_minutes = total_minutes
-            participant.days_passed = days_passed
-            participant.days_failed = days_failed
-            participant.today_minutes = today_minutes
-            participant.today_passed = today_passed
+            participant.days_logged = stats['days_logged']
+            participant.total_screen_time_minutes = stats['total_screen_time_minutes']
+            participant.days_passed = stats['days_passed']
+            participant.days_failed = stats['days_failed']
+            participant.today_minutes = stats['today_minutes']
+            participant.today_passed = stats['today_passed']
             
             db.session.commit()
             logger.info(f"Recalculated stats for challenge {challenge_id}, user {user_id}")
