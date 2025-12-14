@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { friendshipApi } from '../../api/friendshipApi'
 import { updateChallenge } from '../../api/challengesApi'
 
@@ -12,9 +12,10 @@ export default function EditChallengeModal({ challenge, currentUser, onClose, on
   const [name, setName] = useState(challenge.name || '')
   const [selected, setSelected] = useState([])
   
-  // Get existing participant IDs from passed prop
-  const existingParticipantIds = new Set(
-    existingParticipants.map(p => p.user_id || getUserId(p)).filter(Boolean)
+  // Memoize existing participant IDs to prevent unnecessary re-renders
+  const existingParticipantIds = useMemo(() => 
+    new Set(existingParticipants.map(p => p.user_id || getUserId(p)).filter(Boolean)),
+    [existingParticipants]
   )
   
   useEffect(() => {
