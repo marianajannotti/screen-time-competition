@@ -1,35 +1,6 @@
 import React from 'react'
 import { minutesLabel } from '../../utils/timeFormatters'
-
-// Normalize user id from different possible shapes
-function getUserId(u) {
-  return u?.user_id ?? u?.id ?? u?.userId ?? u?.uid ?? null
-}
-
-/**
- * Determines the current status of a challenge based on dates
- * @returns {'upcoming' | 'active' | 'completed'}
- */
-function getChallengeStatus(challenge) {
-  if (!challenge.start_date || !challenge.end_date) return 'active'
-  
-  const today = new Date().toISOString().slice(0, 10)
-  const start = challenge.start_date
-  const end = challenge.end_date
-  
-  if (today < start) return 'upcoming'
-  if (today > end) return 'completed'
-  return 'active'
-}
-
-/**
- * Formats a date string to a readable format
- */
-function formatDate(dateStr) {
-  if (!dateStr) return ''
-  const date = new Date(dateStr + 'T00:00:00')
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-}
+import { getChallengeStatus, formatDate, getUserId } from '../../utils/challengeHelpers'
 
 /**
  * Calculate days remaining in challenge

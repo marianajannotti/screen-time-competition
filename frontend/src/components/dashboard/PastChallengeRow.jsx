@@ -1,13 +1,7 @@
 import React from 'react'
+import { formatDateRange } from '../../utils/challengeHelpers'
 
 export default function PastChallengeRow({ challenge, onViewDetails }) {
-  const formatDateRange = (start, end) => {
-    const startDate = new Date(start)
-    const endDate = new Date(end)
-    const startStr = startDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-    const endStr = endDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-    return `${startStr} - ${endStr}`
-  }
 
   return (
     <div

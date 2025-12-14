@@ -3,29 +3,7 @@ import { minutesLabel } from '../../utils/timeFormatters'
 import { getLeaderboard } from '../../api/challengesApi'
 import trophyIcon from '../../assets/badges/trophy-icon.png'
 import EditChallengeModal from './EditChallengeModal'
-
-// Normalize user id from different possible shapes
-function getUserId(u) {
-  return u?.user_id ?? u?.id ?? u?.userId ?? u?.uid ?? null
-}
-
-function formatDate(dateStr) {
-  if (!dateStr) return ''
-  const date = new Date(dateStr + 'T00:00:00')
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-}
-
-function getChallengeStatus(challenge) {
-  if (!challenge.start_date || !challenge.end_date) return 'active'
-  
-  const today = new Date().toISOString().slice(0, 10)
-  const start = challenge.start_date
-  const end = challenge.end_date
-  
-  if (today < start) return 'upcoming'
-  if (today > end) return 'completed'
-  return 'active'
-}
+import { getChallengeStatus, formatDate, getUserId } from '../../utils/challengeHelpers'
 
 export default function ChallengeDetailsModal({ challenge, currentUser, onClose, onDelete, onLeave, onUpdate }) {
   const [leaderboard, setLeaderboard] = useState([])
