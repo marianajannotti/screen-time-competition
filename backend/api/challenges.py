@@ -121,6 +121,60 @@ def get_challenge(challenge_id):
         return add_api_headers(response)
 
 
+@challenges_bp.route('/<int:challenge_id>', methods=['PATCH'])
+@login_required
+def update_challenge(challenge_id):
+    """
+    Update a challenge's name and/or add new participants.
+    Args:
+        challenge_id: ID of the challenge to update
+    Returns:
+        JSON response with updated challenge or error message.
+    Example JSON:
+        {
+            "name": "Updated challenge name",  // optional
+            "invited_user_ids": [5, 6]  // optional, adds new participants only
+        }
+    """
+    if request.content_type != "application/json":
+        response = make_response(
+            jsonify({'error': 'Content-Type must be application/json'}), 415
+        )
+        return add_api_headers(response)
+    
+    try:
+        data = request.get_json()
+        
+        name = data.get('name')
+        new_invited_user_ids = data.get('invited_user_ids')
+        
+        challenge = ChallengesService.update_challenge(
+            challenge_id=challenge_id,
+            user_id=current_user.id,
+            name=name,
+            new_invited_user_ids=new_invited_user_ids
+        )
+        
+        response = make_response(jsonify({
+            'challenge': challenge.to_dict(),
+            'message': 'Challenge updated successfully'
+        }), 200)
+        return add_api_headers(response)
+    
+    except ValidationError as e:
+        response = make_response(jsonify({'error': str(e)}), 400)
+        return add_api_headers(response)
+    
+    except Exception as e:  # pragma: no cover
+        db.session.rollback()
+        from flask import current_app
+        current_app.logger.error(f'Failed to update challenge: {str(e)}')
+        response = make_response(
+            jsonify({'error': 'Failed to update challenge'}), 500
+        )
+        return add_api_headers(response)
+
+
 @challenges_bp.route('/<int:challenge_id>/leaderboard', methods=['GET'])
 @login_required
 def get_leaderboard(challenge_id):
@@ -252,5 +306,81 @@ def delete_challenge(challenge_id):
         current_app.logger.error(f'Failed to delete challenge: {str(e)}')
         response = make_response(
             jsonify({'error': 'Failed to delete challenge'}), 500
+        )
+        return add_api_headers(response)
+
+
+@challenges_bp.route('/invitations', methods=['GET'])
+@login_required
+def get_pending_invitations():
+    """
+    Get all pending challenge invitations for the current user.
+    Args:
+        None
+    Returns:
+        JSON response with a list of pending invitations.
+    """
+    invitations = ChallengesService.get_pending_invitations(current_user.id)
+    
+    response = make_response(jsonify({'invitations': invitations}), 200)
+    return add_api_headers(response)
+
+
+@challenges_bp.route('/invitations/<int:participant_id>/accept', methods=['POST'])
+@login_required
+def accept_invitation(participant_id):
+    """
+    Accept a challenge invitation.
+    Args:
+        participant_id: ID of the participant record (invitation)
+    Returns:
+        JSON response with success or error message.
+    """
+    try:
+        ChallengesService.respond_to_invitation(current_user.id, participant_id, accept=True)
+        
+        response = make_response(jsonify({'message': 'Invitation accepted'}), 200)
+        return add_api_headers(response)
+    
+    except ValidationError as e:
+        response = make_response(jsonify({'error': str(e)}), 400)
+        return add_api_headers(response)
+    
+    except Exception as e:  # pragma: no cover
+        db.session.rollback()
+        from flask import current_app
+        current_app.logger.error(f'Failed to accept invitation: {str(e)}')
+        response = make_response(
+            jsonify({'error': 'Failed to accept invitation'}), 500
+        )
+        return add_api_headers(response)
+
+
+@challenges_bp.route('/invitations/<int:participant_id>/decline', methods=['POST'])
+@login_required
+def decline_invitation(participant_id):
+    """
+    Decline a challenge invitation.
+    Args:
+        participant_id: ID of the participant record (invitation)
+    Returns:
+        JSON response with success or error message.
+    """
+    try:
+        ChallengesService.respond_to_invitation(current_user.id, participant_id, accept=False)
+        
+        response = make_response(jsonify({'message': 'Invitation declined'}), 200)
+        return add_api_headers(response)
+    
+    except ValidationError as e:
+        response = make_response(jsonify({'error': str(e)}), 400)
+        return add_api_headers(response)
+    
+    except Exception as e:  # pragma: no cover
+        db.session.rollback()
+        from flask import current_app
+        current_app.logger.error(f'Failed to decline invitation: {str(e)}')
+        response = make_response(
+            jsonify({'error': 'Failed to decline invitation'}), 500
         )
         return add_api_headers(response)

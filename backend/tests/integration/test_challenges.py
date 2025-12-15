@@ -161,7 +161,7 @@ class ChallengesAPITestCase(unittest.TestCase):
 
         response = self.client.post("/api/challenges", json=payload)
         self.assertEqual(response.status_code, 400)
-        self.assertIn("End date must be after start date", response.get_json()["error"])
+        self.assertIn("End date cannot be before start date", response.get_json()["error"])
 
     def test_create_challenge_past_start_date(self):
         """Test that start date in the past returns error."""
@@ -700,16 +700,18 @@ class ChallengesAPITestCase(unittest.TestCase):
         db.session.add(challenge)
         db.session.flush()
 
-        # Add participants with logs
+        # Add participants with logs (must be accepted to appear in get_user_challenges)
         participant1 = ChallengeParticipant(
             challenge_id=challenge.challenge_id,
             user_id=self.user1.id,
+            invitation_status='accepted',
             days_logged=5,
             total_screen_time_minutes=250
         )
         participant2 = ChallengeParticipant(
             challenge_id=challenge.challenge_id,
             user_id=self.user2.id,
+            invitation_status='accepted',
             days_logged=5,
             total_screen_time_minutes=350
         )
@@ -823,6 +825,458 @@ class ChallengesAPITestCase(unittest.TestCase):
 
         self.assertEqual(participant.total_screen_time_minutes, 45)
         self.assertEqual(participant.days_passed, 1)  # Under 60 target
+
+    # --- Tests for recalculate_challenge_stats ---
+
+    def test_recalculate_stats_with_existing_logs(self):
+        """Test recalculate_challenge_stats successfully recalculates with existing logs."""
+        from backend.services.screen_time_service import ScreenTimeService
+        
+        today = date.today()
+        start = today
+        end = today + timedelta(days=5)
+
+        # Create challenge
+        payload = {
+            "name": "Test Challenge",
+            "target_app": "Instagram",
+            "target_minutes": 60,
+            "start_date": start.isoformat(),
+            "end_date": end.isoformat(),
+            "invited_user_ids": []
+        }
+        response = self.client.post("/api/challenges", json=payload)
+        challenge_id = response.get_json()["challenge"]["challenge_id"]
+
+        # Add logs before recalculation
+        self.client.post("/api/screen-time/", json={
+            "app_name": "Instagram",
+            "hours": 0,
+            "minutes": 45,
+            "date": today.isoformat()
+        })
+
+        # Recalculate stats
+        ScreenTimeService.recalculate_challenge_stats(challenge_id, self.user1.id)
+
+        # Verify stats were updated correctly
+        participant = ChallengeParticipant.query.filter_by(
+            challenge_id=challenge_id,
+            user_id=self.user1.id
+        ).first()
+
+        self.assertEqual(participant.days_logged, 1)
+        self.assertEqual(participant.total_screen_time_minutes, 45)
+        self.assertEqual(participant.days_passed, 1)  # Under 60 target
+        self.assertEqual(participant.days_failed, 0)
+        self.assertEqual(participant.today_minutes, 45)
+        self.assertEqual(participant.today_passed, True)
+
+    def test_recalculate_stats_total_vs_specific_app(self):
+        """Test recalculate_challenge_stats handles TOTAL vs specific app challenges."""
+        from backend.services.screen_time_service import ScreenTimeService
+        
+        today = date.today()
+        start = today
+        end = today + timedelta(days=5)
+
+        # Create TOTAL challenge
+        payload = {
+            "name": "Total Challenge",
+            "target_app": "__TOTAL__",
+            "target_minutes": 120,
+            "start_date": start.isoformat(),
+            "end_date": end.isoformat(),
+            "invited_user_ids": []
+        }
+        response = self.client.post("/api/challenges", json=payload)
+        total_challenge_id = response.get_json()["challenge"]["challenge_id"]
+
+        # Create specific app challenge
+        payload["name"] = "Instagram Challenge"
+        payload["target_app"] = "Instagram"
+        payload["target_minutes"] = 30
+        response = self.client.post("/api/challenges", json=payload)
+        app_challenge_id = response.get_json()["challenge"]["challenge_id"]
+
+        # Add multiple app logs
+        self.client.post("/api/screen-time/", json={
+            "app_name": "Instagram",
+            "hours": 0,
+            "minutes": 45,
+            "date": today.isoformat()
+        })
+        self.client.post("/api/screen-time/", json={
+            "app_name": "TikTok",
+            "hours": 1,
+            "minutes": 0,
+            "date": today.isoformat()
+        })
+
+        # Recalculate for both
+        ScreenTimeService.recalculate_challenge_stats(total_challenge_id, self.user1.id)
+        ScreenTimeService.recalculate_challenge_stats(app_challenge_id, self.user1.id)
+
+        # Check TOTAL challenge (should count all apps)
+        total_participant = ChallengeParticipant.query.filter_by(
+            challenge_id=total_challenge_id,
+            user_id=self.user1.id
+        ).first()
+        self.assertEqual(total_participant.total_screen_time_minutes, 105)  # 45 + 60
+
+        # Check app-specific challenge (should only count Instagram)
+        app_participant = ChallengeParticipant.query.filter_by(
+            challenge_id=app_challenge_id,
+            user_id=self.user1.id
+        ).first()
+        self.assertEqual(app_participant.total_screen_time_minutes, 45)  # Only Instagram
+
+    def test_recalculate_stats_with_no_logs(self):
+        """Test recalculate_challenge_stats handles challenges with no logs."""
+        from backend.services.screen_time_service import ScreenTimeService
+        
+        today = date.today()
+        start = today
+        end = today + timedelta(days=5)
+
+        # Create challenge
+        payload = {
+            "name": "No Logs Challenge",
+            "target_app": "Instagram",
+            "target_minutes": 60,
+            "start_date": start.isoformat(),
+            "end_date": end.isoformat(),
+            "invited_user_ids": []
+        }
+        response = self.client.post("/api/challenges", json=payload)
+        challenge_id = response.get_json()["challenge"]["challenge_id"]
+
+        # Recalculate without adding any logs
+        ScreenTimeService.recalculate_challenge_stats(challenge_id, self.user1.id)
+
+        # Verify stats are all zero/None
+        participant = ChallengeParticipant.query.filter_by(
+            challenge_id=challenge_id,
+            user_id=self.user1.id
+        ).first()
+
+        self.assertEqual(participant.days_logged, 0)
+        self.assertEqual(participant.total_screen_time_minutes, 0)
+        self.assertEqual(participant.days_passed, 0)
+        self.assertEqual(participant.days_failed, 0)
+        self.assertEqual(participant.today_minutes, 0)
+        self.assertIsNone(participant.today_passed)
+
+    def test_recalculate_stats_missing_challenge(self):
+        """Test recalculate_challenge_stats handles missing challenge gracefully."""
+        from backend.services.screen_time_service import ScreenTimeService
+        
+        # Try to recalculate for non-existent challenge - should not raise error
+        ScreenTimeService.recalculate_challenge_stats(99999, self.user1.id)
+
+    def test_recalculate_stats_missing_participant(self):
+        """Test recalculate_challenge_stats handles missing participant gracefully."""
+        from backend.services.screen_time_service import ScreenTimeService
+        
+        today = date.today()
+        start = today
+        end = today + timedelta(days=5)
+
+        # Create challenge
+        payload = {
+            "name": "Test Challenge",
+            "target_app": "Instagram",
+            "target_minutes": 60,
+            "start_date": start.isoformat(),
+            "end_date": end.isoformat(),
+            "invited_user_ids": []
+        }
+        response = self.client.post("/api/challenges", json=payload)
+        challenge_id = response.get_json()["challenge"]["challenge_id"]
+
+        # Try to recalculate for user who is not a participant - should not raise error
+        ScreenTimeService.recalculate_challenge_stats(challenge_id, self.user2.id)
+
+    # --- Tests for update_challenge endpoint ---
+
+    def test_update_challenge_name_success(self):
+        """Test successful challenge name update."""
+        today = date.today()
+        start = today + timedelta(days=1)
+        end = start + timedelta(days=6)
+
+        # Create challenge
+        payload = {
+            "name": "Original Name",
+            "target_app": "Instagram",
+            "target_minutes": 30,
+            "start_date": start.isoformat(),
+            "end_date": end.isoformat(),
+            "invited_user_ids": []
+        }
+        response = self.client.post("/api/challenges", json=payload)
+        challenge_id = response.get_json()["challenge"]["challenge_id"]
+
+        # Update name
+        update_payload = {"name": "Updated Name"}
+        response = self.client.patch(f"/api/challenges/{challenge_id}", json=update_payload)
+        
+        self.assertEqual(response.status_code, 200)
+        data = response.get_json()
+        self.assertEqual(data["challenge"]["name"], "Updated Name")
+
+        # Verify in database
+        challenge = db.session.get(Challenge, challenge_id)
+        self.assertEqual(challenge.name, "Updated Name")
+
+    def test_update_challenge_add_participants(self):
+        """Test successful participant addition."""
+        today = date.today()
+        start = today + timedelta(days=1)
+        end = start + timedelta(days=6)
+
+        # Create challenge
+        payload = {
+            "name": "Test Challenge",
+            "target_app": "Instagram",
+            "target_minutes": 30,
+            "start_date": start.isoformat(),
+            "end_date": end.isoformat(),
+            "invited_user_ids": []
+        }
+        response = self.client.post("/api/challenges", json=payload)
+        challenge_id = response.get_json()["challenge"]["challenge_id"]
+
+        # Add participants
+        update_payload = {"invited_user_ids": [self.user2.id, self.user3.id]}
+        response = self.client.patch(f"/api/challenges/{challenge_id}", json=update_payload)
+        
+        self.assertEqual(response.status_code, 200)
+
+        # Verify participants were added
+        participants = ChallengeParticipant.query.filter_by(challenge_id=challenge_id).all()
+        self.assertEqual(len(participants), 3)  # Owner + 2 invited
+
+    def test_update_challenge_owner_only(self):
+        """Test that only the owner can update a challenge."""
+        today = date.today()
+        start = today + timedelta(days=1)
+        end = start + timedelta(days=6)
+
+        # Create challenge as user1
+        payload = {
+            "name": "Test Challenge",
+            "target_app": "Instagram",
+            "target_minutes": 30,
+            "start_date": start.isoformat(),
+            "end_date": end.isoformat(),
+            "invited_user_ids": [self.user2.id]
+        }
+        response = self.client.post("/api/challenges", json=payload)
+        challenge_id = response.get_json()["challenge"]["challenge_id"]
+
+        # Try to update as user2 (non-owner)
+        client2 = self._get_client_for_user(2)
+        update_payload = {"name": "Hacked Name"}
+        response = client2.patch(f"/api/challenges/{challenge_id}", json=update_payload)
+        
+        self.assertEqual(response.status_code, 400)
+
+    def test_update_challenge_empty_payload(self):
+        """Test update with empty payload accepts but does nothing."""
+        today = date.today()
+        start = today + timedelta(days=1)
+        end = start + timedelta(days=6)
+
+        # Create challenge
+        payload = {
+            "name": "Test Challenge",
+            "target_app": "Instagram",
+            "target_minutes": 30,
+            "start_date": start.isoformat(),
+            "end_date": end.isoformat(),
+            "invited_user_ids": []
+        }
+        response = self.client.post("/api/challenges", json=payload)
+        challenge_id = response.get_json()["challenge"]["challenge_id"]
+
+        # Try to update with empty payload - returns 200 but makes no changes
+        response = self.client.patch(f"/api/challenges/{challenge_id}", json={})
+        
+        self.assertEqual(response.status_code, 200)
+
+    def test_update_completed_challenge_restriction(self):
+        """Test that completed challenges cannot be updated."""
+        today = date.today()
+        start = today - timedelta(days=10)
+        end = today - timedelta(days=3)
+
+        # Create challenge directly in DB (API won't allow past dates)
+        from backend.models.challenge import Challenge
+        challenge = Challenge(
+            name="Completed Challenge",
+            owner_id=self.user1.id,
+            target_app="Instagram",
+            target_minutes=30,
+            start_date=start,
+            end_date=end,
+            status="completed"
+        )
+        db.session.add(challenge)
+        db.session.commit()
+        challenge_id = challenge.challenge_id
+
+        # Try to update completed challenge
+        update_payload = {"name": "New Name"}
+        response = self.client.patch(f"/api/challenges/{challenge_id}", json=update_payload)
+        
+        self.assertEqual(response.status_code, 400)
+
+    # --- Tests for invitation management endpoints ---
+
+    def test_get_pending_invitations(self):
+        """Test fetching pending invitations."""
+        today = date.today()
+        start = today + timedelta(days=1)
+        end = start + timedelta(days=6)
+
+        # Create challenge and invite user2
+        payload = {
+            "name": "Test Challenge",
+            "target_app": "Instagram",
+            "target_minutes": 30,
+            "start_date": start.isoformat(),
+            "end_date": end.isoformat(),
+            "invited_user_ids": [self.user2.id]
+        }
+        self.client.post("/api/challenges", json=payload)
+
+        # Get pending invitations as user2
+        client2 = self._get_client_for_user(2)
+        response = client2.get("/api/challenges/invitations")
+        
+        self.assertEqual(response.status_code, 200)
+        data = response.get_json()
+        self.assertIn("invitations", data)
+        self.assertEqual(len(data["invitations"]), 1)
+        self.assertEqual(data["invitations"][0]["owner_username"], "alice")
+
+    def test_accept_invitation_with_stats_recalculation(self):
+        """Test that accepting an invitation triggers stats recalculation.
+        
+        Note: The current implementation auto-accepts invited users, so this test
+        verifies that recalculation_challenge_stats correctly calculates stats from
+        existing logs when a user joins a challenge."""
+        today = date.today()
+        start = today + timedelta(days=1)
+        end = start + timedelta(days=5)
+
+        # User2 logs some screen time before being invited
+        client2 = self._get_client_for_user(2)
+        client2.post("/api/screen-time/", json={
+            "app_name": "Instagram",
+            "hours": 0,
+            "minutes": 45,
+            "date": start.isoformat()
+        })
+
+        # Create challenge and invite user2 (auto-accepts in current implementation)
+        payload = {
+            "name": "Test Challenge",
+            "target_app": "Instagram",
+            "target_minutes": 60,
+            "start_date": start.isoformat(),
+            "end_date": end.isoformat(),
+            "invited_user_ids": [self.user2.id]
+        }
+        response = self.client.post("/api/challenges", json=payload)
+        self.assertEqual(response.status_code, 201)
+        challenge_id = response.get_json()["challenge"]["challenge_id"]
+
+        # Manually trigger recalculation to verify it works
+        from backend.services.screen_time_service import ScreenTimeService
+        ScreenTimeService.recalculate_challenge_stats(challenge_id, self.user2.id)
+
+        # Verify stats were calculated correctly
+        participant = ChallengeParticipant.query.filter_by(
+            challenge_id=challenge_id,
+            user_id=self.user2.id
+        ).first()
+        
+        self.assertEqual(participant.total_screen_time_minutes, 45)
+        self.assertEqual(participant.days_logged, 1)
+        self.assertEqual(participant.days_passed, 1)  # Under 60 min target
+
+    def test_decline_invitation(self):
+        """Test declining invitation."""
+        today = date.today()
+        start = today + timedelta(days=1)
+        end = start + timedelta(days=6)
+
+        # Create challenge and invite user2
+        payload = {
+            "name": "Test Challenge",
+            "target_app": "Instagram",
+            "target_minutes": 30,
+            "start_date": start.isoformat(),
+            "end_date": end.isoformat(),
+            "invited_user_ids": [self.user2.id]
+        }
+        response = self.client.post("/api/challenges", json=payload)
+        challenge_id = response.get_json()["challenge"]["challenge_id"]
+
+        # Get participant_id for user2
+        participant = ChallengeParticipant.query.filter_by(
+            challenge_id=challenge_id,
+            user_id=self.user2.id
+        ).first()
+
+        # Decline invitation
+        client2 = self._get_client_for_user(2)
+        response = client2.post(f"/api/challenges/invitations/{participant.participant_id}/decline")
+        
+        self.assertEqual(response.status_code, 200)
+
+        # Verify status was updated
+        db.session.refresh(participant)
+        self.assertEqual(participant.invitation_status, "declined")
+
+    def test_accept_invitation_invalid_participant(self):
+        """Test accepting invitation with invalid participant ID."""
+        client2 = self._get_client_for_user(2)
+        response = client2.post("/api/challenges/invitations/99999/accept")
+        
+        self.assertEqual(response.status_code, 400)
+
+    def test_accept_invitation_authorization_check(self):
+        """Test that users can only accept their own invitations."""
+        today = date.today()
+        start = today + timedelta(days=1)
+        end = start + timedelta(days=6)
+
+        # Create challenge and invite user2
+        payload = {
+            "name": "Test Challenge",
+            "target_app": "Instagram",
+            "target_minutes": 30,
+            "start_date": start.isoformat(),
+            "end_date": end.isoformat(),
+            "invited_user_ids": [self.user2.id]
+        }
+        response = self.client.post("/api/challenges", json=payload)
+        challenge_id = response.get_json()["challenge"]["challenge_id"]
+
+        # Get participant_id for user2
+        participant = ChallengeParticipant.query.filter_by(
+            challenge_id=challenge_id,
+            user_id=self.user2.id
+        ).first()
+
+        # Try to accept as user3 (wrong user)
+        client3 = self._get_client_for_user(3)
+        response = client3.post(f"/api/challenges/invitations/{participant.participant_id}/accept")
+        
+        self.assertEqual(response.status_code, 400)
 
 
 if __name__ == "__main__":

@@ -1,53 +1,38 @@
 import React, { useState, useEffect } from 'react'
 import { minutesLabel } from '../../utils/timeFormatters'
+import { getLeaderboard } from '../../api/challengesApi'
 import trophyIcon from '../../assets/badges/trophy-icon.png'
+import EditChallengeModal from './EditChallengeModal'
+import { getChallengeStatus, formatDate, getUserId } from '../../utils/challengeHelpers'
 
-// Normalize user id from different possible shapes
-function getUserId(u) {
-  return u?.user_id ?? u?.id ?? u?.userId ?? u?.uid ?? null
-}
-
-function formatDate(dateStr) {
-  if (!dateStr) return ''
-  const date = new Date(dateStr + 'T00:00:00')
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-}
-
-function getChallengeStatus(challenge) {
-  if (!challenge.start_date || !challenge.end_date) return 'active'
-  
-  const today = new Date().toISOString().slice(0, 10)
-  const start = challenge.start_date
-  const end = challenge.end_date
-  
-  if (today < start) return 'upcoming'
-  if (today > end) return 'completed'
-  return 'active'
-}
-
-export default function ChallengeDetailsModal({ challenge, currentUser, onClose, onDelete, onLeave }) {
+export default function ChallengeDetailsModal({ challenge, currentUser, onClose, onDelete, onLeave, onUpdate }) {
   const [leaderboard, setLeaderboard] = useState([])
   const [loadingLeaderboard, setLoadingLeaderboard] = useState(true)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false)
+  const [showEditModal, setShowEditModal] = useState(false)
 
   const currentUserId = getUserId(currentUser)
-  const isCreator = challenge.creator_id === currentUserId
-  const challengeStatus = getChallengeStatus(challenge)
+  const isCreator = challenge.owner_id === currentUserId
+  const challengeStatus = challenge.status || getChallengeStatus(challenge)
 
-  // TODO: Replace with real API call when backend is merged
   useEffect(() => {
-    // Mock leaderboard data
-    const mockLeaderboard = [
-      { user_id: currentUserId, username: currentUser?.username || 'You', avg_daily_usage: 45, rank: 1 },
-      { user_id: 'user2', username: 'Alice', avg_daily_usage: 52, rank: 2 },
-      { user_id: 'user3', username: 'Bob', avg_daily_usage: 68, rank: 3 },
-    ]
-    
-    setTimeout(() => {
-      setLeaderboard(mockLeaderboard)
-      setLoadingLeaderboard(false)
-    }, 500)
+    let mounted = true
+    ;(async () => {
+      try {
+        setLoadingLeaderboard(true)
+        const data = await getLeaderboard(challenge.challenge_id)
+        if (!mounted) return
+        setLeaderboard(data.leaderboard || [])
+      } catch (err) {
+        console.error('Error fetching leaderboard:', err)
+        if (!mounted) return
+        setLeaderboard([])
+      } finally {
+        if (mounted) setLoadingLeaderboard(false)
+      }
+    })()
+    return () => { mounted = false }
   }, [challenge, currentUserId, currentUser])
 
   const handleDelete = async () => {
@@ -90,7 +75,7 @@ export default function ChallengeDetailsModal({ challenge, currentUser, onClose,
                 color: challengeStatus === 'active' ? '#2563eb' : challengeStatus === 'completed' ? '#6b7280' : '#f59e0b',
                 fontWeight:600
               }}>
-                {challengeStatus === 'active' ? '🟢 Active' : challengeStatus === 'completed' ? '✓ Completed' : '⏰ Upcoming'}
+                {challengeStatus === 'active' ? 'Active' : challengeStatus === 'completed' ? '✓ Completed' : 'Upcoming'}
               </span>
               {isCreator && (
                 <span style={{
@@ -101,7 +86,7 @@ export default function ChallengeDetailsModal({ challenge, currentUser, onClose,
                   color:'#16a34a',
                   fontWeight:600
                 }}>
-                  👑 Creator
+                  Creator
                 </span>
               )}
             </div>
@@ -126,7 +111,7 @@ export default function ChallengeDetailsModal({ challenge, currentUser, onClose,
             <div style={{marginBottom:12}}>
               <div style={{fontSize:13,color:'#64748b',marginBottom:4}}>Target</div>
               <div style={{fontSize:16,fontWeight:600}}>
-                {challenge.criteria?.app === '__TOTAL__' ? 'Total Screen Time' : challenge.criteria?.app} • {minutesLabel(challenge.criteria?.targetMinutes || 0)} per day
+                {challenge.target_app === '__TOTAL__' ? 'Total Screen Time' : challenge.target_app} • {minutesLabel(challenge.target_minutes || 0)} per day
               </div>
             </div>
             
@@ -196,12 +181,25 @@ export default function ChallengeDetailsModal({ challenge, currentUser, onClose,
                       </div>
                     </div>
                     <div style={{fontSize:14,fontWeight:600,color:'#334155'}}>
-                      {minutesLabel(participant.avg_daily_usage || 0)}/day
+                      {participant.invitation_status === 'pending' ? (
+                        <span style={{fontSize:13,color:'#6b7280',fontStyle:'italic'}}>Pending invitation</span>
+                      ) : (
+                        <>{minutesLabel(participant.average_daily_minutes || 0)}/day</>
+                      )}
                     </div>
                   </div>
                 )
               })}
             </div>
+          )}
+          {isCreator && challengeStatus !== 'completed' && (
+            <button
+              className="btn-secondary"
+              onClick={() => setShowEditModal(true)}
+              style={{marginTop:12,width:'100%'}}
+            >
+              + Invite More Friends
+            </button>
           )}
         </div>
 
@@ -209,6 +207,13 @@ export default function ChallengeDetailsModal({ challenge, currentUser, onClose,
         <div style={{display:'flex',gap:12,paddingTop:16,borderTop:'1px solid #e2e8f0'}}>
           {isCreator ? (
             <>
+              <button 
+                className="btn-secondary"
+                onClick={() => setShowEditModal(true)}
+                style={{flex:1}}
+              >
+                Edit
+              </button>
               <button 
                 className="btn-secondary"
                 onClick={() => setShowDeleteConfirm(true)}
@@ -323,6 +328,20 @@ export default function ChallengeDetailsModal({ challenge, currentUser, onClose,
               </div>
             </div>
           </div>
+        )}
+
+        {/* Edit Modal */}
+        {showEditModal && (
+          <EditChallengeModal
+            challenge={challenge}
+            currentUser={currentUser}
+            existingParticipants={leaderboard}
+            onClose={() => setShowEditModal(false)}
+            onUpdate={() => {
+              setShowEditModal(false)
+              if (onUpdate) onUpdate()
+            }}
+          />
         )}
       </div>
     </div>
