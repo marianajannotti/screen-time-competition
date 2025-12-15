@@ -211,7 +211,7 @@ def forgot_password():
 
         # Send email if user exists (token will be None if user doesn't exist)
         if reset_token:
-            from .email_service import send_password_reset_email
+            from ..services.email_service import send_password_reset_email
             send_password_reset_email(email, reset_token)
 
         # Always return same message (don't reveal if email exists)
