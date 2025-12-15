@@ -1,0 +1,44 @@
+{% extends "emails/base.html" %}
+
+{% block title %}Welcome to Offy!{% endblock %}
+
+{% block content %}
+<h2 style="color: #6b21a8; margin-top: 0; font-size: 22px;">Welcome to Offy, {{ username }}! 🎉</h2>
+
+<p style="font-size: 16px;">Hey there, future screen time champion!</p>
+
+<p style="font-size: 16px;">We're so excited to have you join the Offy community. You've just taken the first step toward building healthier screen time habits and reclaiming your time for what really matters. 💪</p>
+
+<h3 style="color: #6b21a8; font-size: 18px; margin-top: 28px;">Here's what you can do now:</h3>
+
+<div style="background: linear-gradient(135deg, #faf5ff, #f3e8ff); border-radius: 12px; padding: 20px; margin: 20px 0;">
+    <ul style="margin: 0; padding-left: 20px; line-height: 1.8;">
+        <li style="margin-bottom: 12px;"><strong>📊 Log your screen time</strong> - Track your daily usage across different apps</li>
+        <li style="margin-bottom: 12px;"><strong>🎯 Set goals</strong> - Create daily targets to keep yourself accountable</li>
+        <li style="margin-bottom: 12px;"><strong>🏆 Earn badges</strong> - Unlock achievements as you hit milestones</li>
+        <li style="margin-bottom: 12px;"><strong>👥 Add friends</strong> - Compete on the leaderboard and motivate each other</li>
+        <li style="margin-bottom: 12px;"><strong>🔥 Build streaks</strong> - Keep the momentum going day after day</li>
+    </ul>
+</div>
+
+<!-- Get Started Button -->
+<div style="text-align: center; margin: 32px 0;">
+    <a href="{{ app_url }}" style="background: linear-gradient(135deg, #6b21a8, #4f46e5); 
+              color: white; 
+              padding: 16px 40px; 
+              text-decoration: none; 
+              border-radius: 12px;
+              display: inline-block;
+              font-weight: 600;
+              font-size: 16px;
+              box-shadow: 0 6px 18px rgba(107, 33, 168, 0.25);">
+        Get Started Now
+    </a>
+</div>
+
+<div style="background: linear-gradient(135deg, #faf5ff, #f3e8ff); border-radius: 12px; padding: 16px; margin-top: 28px; border-left: 4px solid #6b21a8;">
+    <p style="margin: 0; font-size: 14px;">💡 <strong>Pro tip:</strong> Start by logging your screen time today to establish your baseline. You can't improve what you don't measure!</p>
+</div>
+
+<p style="font-size: 16px; margin-top: 28px;">Ready to take control of your screen time? Let's do this! 🚀</p>
+{% endblock %}

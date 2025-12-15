@@ -1,0 +1,18 @@
+Hey {{ username }}!
+
+🎉 ACHIEVEMENT UNLOCKED! 🎉
+
+You just earned a new badge:
+
+🏅 {{ badge_name }} 🏅
+
+You're crushing your screen time goals and building better habits every day. This badge is proof of your dedication!
+
+View your profile to see all your earned badges:
+{{ profile_url }}
+
+Keep up the amazing work! 💪
+
+---
+The Offy Team
+Helping you win the battle against screen time
