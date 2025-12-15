@@ -1,11 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { friendshipApi } from '../../api/friendshipApi'
 import { createChallenge } from '../../api/challengesApi'
-
-// Normalize user id from different possible shapes
-function getUserId(u) {
-  return u?.user_id ?? u?.id ?? u?.userId ?? u?.uid ?? null
-}
+import { getUserId } from '../../utils/challengeHelpers'
 
 export default function ChallengeModal({ onClose, onCreate, currentUser }) {
   const [friends, setFriends] = useState([])

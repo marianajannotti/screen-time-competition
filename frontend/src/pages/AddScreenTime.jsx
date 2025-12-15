@@ -2,11 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useNavigate } from 'react-router-dom'
 import { addScreenTimeEntry } from '../api/screenTimeApi'
-
-// normalize user id shape
-function getUserId(u) {
-  return u?.user_id ?? u?.id ?? u?.userId ?? u?.uid ?? null
-}
+import { getUserId } from '../utils/challengeHelpers'
 
 export default function AddScreenTime() {
   const { user } = useAuth()

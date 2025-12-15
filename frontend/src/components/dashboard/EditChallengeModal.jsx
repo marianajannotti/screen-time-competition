@@ -1,11 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { friendshipApi } from '../../api/friendshipApi'
 import { updateChallenge } from '../../api/challengesApi'
-
-// Normalize user id from different possible shapes
-function getUserId(u) {
-  return u?.user_id ?? u?.id ?? u?.userId ?? u?.uid ?? null
-}
+import { getUserId } from '../../utils/challengeHelpers'
 
 export default function EditChallengeModal({ challenge, currentUser, onClose, onUpdate, existingParticipants = [] }) {
   const [friends, setFriends] = useState([])
@@ -34,8 +30,6 @@ export default function EditChallengeModal({ challenge, currentUser, onClose, on
           .map(f => f.counterpart)
           .filter(Boolean)
           .filter(friend => !existingParticipantIds.has(getUserId(friend)))
-        
-        // Debug logging removed
         
         setFriends(acceptedFriends)
       } catch (err) {
@@ -81,7 +75,6 @@ export default function EditChallengeModal({ challenge, currentUser, onClose, on
     }
     
     try {
-      // Debug logging removed
       await updateChallenge(challenge.challenge_id, payload)
       onUpdate && onUpdate()
       onClose()

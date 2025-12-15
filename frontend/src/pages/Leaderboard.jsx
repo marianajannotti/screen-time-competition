@@ -2,14 +2,11 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { minutesLabel } from '../utils/timeFormatters'
 import { getGlobalLeaderboard, getFriendships } from '../api/leaderboardApi'
+import { getUserId } from '../utils/challengeHelpers'
 import crownIcon from '../assets/badges/crown-icon.png'
 
 export default function Leaderboard(){
   const { user } = useAuth()
-  // Normalize user id from different possible shapes
-  function getUserId(u) {
-    return u?.user_id ?? u?.id ?? u?.userId ?? u?.uid ?? null
-  }
   
   // Get current user's ID for comparisons
   const currentUserId = getUserId(user)
