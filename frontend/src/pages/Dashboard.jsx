@@ -12,6 +12,11 @@ import PastChallengeRow from '../components/dashboard/PastChallengeRow'
 import ChallengeModal from '../components/dashboard/ChallengeModal'
 import ChallengeDetailsModal from '../components/dashboard/ChallengeDetailsModal'
 
+// Helper to format a Date as YYYY-MM-DD
+function formatDate(date) {
+  return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`
+}
+
 export default function Dashboard() {
   const { user } = useAuth()
   // Persist goals in localStorage keyed per user
@@ -114,7 +119,7 @@ export default function Dashboard() {
   }, [challenges])
 
   const todayApps = useMemo(() => {
-    const todayStr = new Date().toISOString().slice(0,10)
+    const todayStr = formatDate(new Date())
     const groups = {}
     logs.filter(l => l.date === todayStr && l.app !== '__TOTAL__').forEach(l => {
       groups[l.app] = (groups[l.app]||0) + l.minutes
@@ -125,7 +130,7 @@ export default function Dashboard() {
   const topApps = todayApps
 
   const todayTotal = useMemo(()=>{
-    const todayStr = new Date().toISOString().slice(0,10)
+    const todayStr = formatDate(new Date())
     const t = logs.find(l => l.date === todayStr && l.app === '__TOTAL__')
     return t ? t.minutes : undefined
   }, [logs])
@@ -154,22 +159,25 @@ export default function Dashboard() {
   
   // Get current week (Sunday to Saturday)
   const today = new Date()
-  const todayStr = today.toISOString().slice(0,10)
+  const todayStr = formatDate(today)
   const currentDayOfWeek = today.getDay() // 0 = Sunday, 6 = Saturday
   
-  // Generate all days of current week (Sun-Sat)
+  // Generate all days of current week (Sun-Sat) - use local date to avoid timezone issues
   const currentWeekDays = Array.from({length:7}, (_,i)=>{
     const d = new Date(today.getFullYear(), today.getMonth(), today.getDate() - currentDayOfWeek + i)
-    return d.toISOString().slice(0,10)
+    return {
+      dateStr: formatDate(d),
+      dayLabel: d.toLocaleDateString('en-US',{weekday:'short'})
+    }
   })
   
   const chartData = {}
-  currentWeekDays.forEach(ds => {
+  currentWeekDays.forEach(({dateStr, dayLabel}) => {
     // Only show data for days up to and including today (not future days)
-    if (ds > todayStr) return
+    if (dateStr > todayStr) return
     
     // build day entry
-    const dayLogs = logs.filter(l => l.date === ds)
+    const dayLogs = logs.filter(l => l.date === dateStr)
     if (!dayLogs.length) return
     const totalEntry = dayLogs.find(l => l.app === '__TOTAL__')
     const apps = {}
@@ -179,7 +187,7 @@ export default function Dashboard() {
     else total = Object.values(apps).reduce((a,b)=>a+b,0)
     const stackedSum = Object.values(apps).reduce((a,b)=>a+b,0)
     const remainder = Math.max(0, total - stackedSum)
-    chartData[new Date(ds).toLocaleDateString('en-US',{weekday:'short'})] = { apps, remainder, total }
+    chartData[dayLabel] = { apps, remainder, total }
   })
   const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']
 
@@ -303,6 +311,7 @@ export default function Dashboard() {
             <div className="top-app-card" style={{ background: 'linear-gradient(180deg,#fff,#fafcff)' }}>
               <div className="app-inner">
                 <div className="usage-main">{todayTotal !== undefined ? minutesLabel(todayTotal) : <span style={{fontSize:'12px'}}>Log your Total Screen Time</span>}</div>
+                <div className="usage-sub">Total Screen Time</div>
                 {todayTotal === undefined && (
                   <div className="usage-sub">Click on the +Log Hours button on the bottom right to log your hours</div>
                 )}
@@ -318,7 +327,7 @@ export default function Dashboard() {
             ))}
           </div>
 
-          <div className="chart-card">
+          <div className="chart-card" style={{paddingLeft: '18px'}}>
             <h3>Last Week's Screen Time</h3>
             <WeeklyChart days={days} chartData={chartData} appColorMap={appColorMap} />
             <div className="chart-legend" style={{display:'flex',flexWrap:'wrap',gap:12,marginTop:10}}>
