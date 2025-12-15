@@ -1,0 +1,18 @@
+Hey {{ recipient_username }}!
+
+👋 NEW FRIEND REQUEST!
+
+{{ requester_username }} wants to be your friend on Offy!
+
+Connect with friends to compete on the leaderboard, share achievements, and motivate each other to build better screen time habits!
+
+Accept or reject the request here:
+{{ friends_url }}
+
+💡 Did you know? Friends can see each other on the leaderboard and celebrate achievements together!
+
+Keep crushing it! 💪
+
+---
+The Offy Team
+Helping you win the battle against screen time

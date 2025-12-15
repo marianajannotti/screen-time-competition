@@ -1,0 +1,24 @@
+Welcome to Offy, {{ username }}! 🎉
+
+Hey there, future screen time champion!
+
+We're so excited to have you join the Offy community. You've just taken the first step toward building healthier screen time habits and reclaiming your time for what really matters.
+
+Here's what you can do now:
+
+📊 Log your screen time - Track your daily usage across different apps
+🎯 Set goals - Create daily targets to keep yourself accountable
+🏆 Earn badges - Unlock achievements as you hit milestones
+👥 Add friends - Compete on the leaderboard and motivate each other
+🔥 Build streaks - Keep the momentum going day after day
+
+Get started now at: {{ app_url }}
+
+💡 Pro tip: Start by logging your screen time today to establish your baseline. You can't improve what you don't measure!
+
+Ready to take control of your screen time? Let's do this! 🚀
+
+---
+Keep crushing it! 💪
+The Offy Team
+Helping you win the battle against screen time

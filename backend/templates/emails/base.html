@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Offy{% endblock %}</title>
+</head>
+
+<body
+    style="font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f6f7fb;">
+    <div
+        style="max-width: 600px; margin: 20px auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 6px 20px rgba(107, 33, 168, 0.1);">
+        
+        <!-- Header -->
+        <div style="background: linear-gradient(135deg, #6b21a8, #4f46e5); padding: 32px 20px; text-align: center;">
+            <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: 700;">Offy</h1>
+            <p style="color: rgba(255,255,255,0.85); margin: 8px 0 0; font-size: 14px;">Less screen time, more life time</p>
+        </div>
+
+        <!-- Content -->
+        <div style="padding: 36px 30px;">
+            {% block content %}
+            <!-- Child templates will override this -->
+            {% endblock %}
+        </div>
+
+        <!-- Footer -->
+        <div style="background-color: #faf5ff; padding: 24px 20px; text-align: center; border-top: 1px solid #e9e9ef;">
+            <p style="font-size: 13px; color: #6b21a8; margin: 0 0 8px; font-weight: 600;">
+                Keep crushing it! 💪
+            </p>
+            <p style="font-size: 12px; color: #888; margin: 0;">
+                The Offy Team<br>
+                <span style="font-style: italic;">Helping you win the battle against screen time</span>
+            </p>
+        </div>
+    </div>
+</body>
+
+</html>

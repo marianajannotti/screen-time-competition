@@ -1,0 +1,39 @@
+{% extends "emails/base.html" %}
+
+{% block title %}New Badge Unlocked!{% endblock %}
+
+{% block content %}
+<h2 style="color: #6b21a8; margin-top: 0; font-size: 22px;">🎉 Achievement Unlocked!</h2>
+
+<p style="font-size: 16px;">Hey {{ username }}!</p>
+
+<p style="font-size: 16px;">Guess what? You just earned a new badge! 🏆</p>
+
+<!-- Badge Display -->
+<div style="background: linear-gradient(135deg, #faf5ff, #f3e8ff); border-radius: 12px; padding: 24px; margin: 28px 0; text-align: center; border: 2px solid #6b21a8;">
+    <div style="font-size: 48px; margin-bottom: 12px;">🏅</div>
+    <h3 style="color: #6b21a8; margin: 0 0 8px; font-size: 24px; font-weight: 700;">{{ badge_name }}</h3>
+    <p style="color: #666; margin: 0; font-size: 14px; font-style: italic;">Keep up the amazing work!</p>
+</div>
+
+<p style="font-size: 16px;">You're crushing your screen time goals and building better habits every day. This badge is proof of your dedication! 💪</p>
+
+<!-- View Profile Button -->
+<div style="text-align: center; margin: 32px 0;">
+    <a href="{{ profile_url }}" style="background: linear-gradient(135deg, #6b21a8, #4f46e5); 
+              color: white; 
+              padding: 16px 40px; 
+              text-decoration: none; 
+              border-radius: 12px;
+              display: inline-block;
+              font-weight: 600;
+              font-size: 16px;
+              box-shadow: 0 6px 18px rgba(107, 33, 168, 0.25);">
+        View Your Profile
+    </a>
+</div>
+
+<div style="background: linear-gradient(135deg, #faf5ff, #f3e8ff); border-radius: 12px; padding: 16px; margin-top: 28px; border-left: 4px solid #6b21a8;">
+    <p style="margin: 0; font-size: 14px;"><strong>💡 Pro tip:</strong> Check out your profile to see all your earned badges and track your progress!</p>
+</div>
+{% endblock %}
