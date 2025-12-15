@@ -218,7 +218,7 @@ export default function Dashboard() {
             <div className="card-head">
               <span className="icon clock" />
               <span className="title">Daily Limit</span>
-        <button className="add-btn" aria-label={dailyGoal === undefined ? "Add daily limit" : "Edit daily limit"} title={dailyGoal === undefined ? "Add daily limit" : "Edit daily limit"} onClick={()=>setShowDailyModal(true)}>{dailyGoal === undefined ? '+' : '✏️'}</button>
+        <button className="add-btn" style={dailyGoal === undefined ? {fontSize: '20px'} : {}} aria-label={dailyGoal === undefined ? "Add daily limit" : "Edit daily limit"} title={dailyGoal === undefined ? "Add daily limit" : "Edit daily limit"} onClick={()=>setShowDailyModal(true)}>{dailyGoal === undefined ? '+' : 'Edit'}</button>
             </div>
             {dailyGoal === undefined ? (
               <p className="muted small" style={{margin:0}}>Create a new limit by clicking +</p>
@@ -236,7 +236,7 @@ export default function Dashboard() {
             <div className="card-head">
               <span className="icon target" />
               <span className="title">Weekly Limit</span>
-        <button className="add-btn" aria-label={weeklyGoal === undefined ? "Add weekly limit" : "Edit weekly limit"} title={weeklyGoal === undefined ? "Add weekly limit" : "Edit weekly limit"} onClick={()=>setShowWeeklyModal(true)}>{weeklyGoal === undefined ? '+' : '✏️'}</button>
+        <button className="add-btn" style={weeklyGoal === undefined ? {fontSize: '20px'} : {}} aria-label={weeklyGoal === undefined ? "Add weekly limit" : "Edit weekly limit"} title={weeklyGoal === undefined ? "Add weekly limit" : "Edit weekly limit"} onClick={()=>setShowWeeklyModal(true)}>{weeklyGoal === undefined ? '+' : 'Edit'}</button>
             </div>
             {weeklyGoal === undefined ? (
               <p className="muted small" style={{margin:0}}>Create a new limit by clicking +</p>
