@@ -415,24 +415,6 @@ class TestAwardBadge(BadgeServiceTestCase):
             if hasattr(badge, 'rarity'):
                 self.assertIn(badge.rarity, ['common', 'rare', 'epic', 'legendary'])
 
-    @unittest.skip("Badge prerequisites not yet implemented")
-    def test_badge_prerequisites_system(self):
-        """Test badge prerequisites if implemented.
-
-        Returns:
-            None
-        """
-        BadgeService.initialize_badges()
-        user = self.create_unique_user("testuser")
-        
-        # Test prerequisite checking
-        try:
-            can_earn = BadgeService.can_earn_badge(user.id, "Advanced Badge")
-            self.assertIsInstance(can_earn, bool)
-        except AttributeError:
-            # Prerequisites not implemented yet
-            self.skipTest("Badge prerequisites not yet implemented")
-
     def test_badge_statistics(self):
         """Test badge statistics functionality.
 
@@ -494,78 +476,6 @@ class TestAwardBadge(BadgeServiceTestCase):
             current_count = leaderboard[i]["badge_count"]
             next_count = leaderboard[i + 1]["badge_count"]
             self.assertGreaterEqual(current_count, next_count)
-
-    @unittest.skip("Concurrent test needs proper implementation")
-    def test_concurrent_badge_awards(self):
-        """Test concurrent badge awarding for data integrity.
-
-        Returns:
-            None
-        """
-        from unittest.mock import patch
-        
-        BadgeService.initialize_badges()
-        user = self.create_unique_user("testuser")
-        
-        badge = Badge.query.first()
-        
-        # Simulate concurrent badge awarding
-        with patch('backend.database.db.session') as mock_session:
-            mock_session.query.return_value.filter_by.return_value.first.return_value = None
-            mock_session.add.return_value = None
-            mock_session.commit.side_effect = [None, Exception("Integrity constraint")]
-            
-            # First award should succeed
-            result1, _ = BadgeService.award_badge(user.id, badge.name)
-            self.assertTrue(result1)
-            
-            # Second concurrent award should be handled gracefully
-            result2, _ = BadgeService.award_badge(user.id, badge.name)
-            # Should return False (already has badge) rather than raising exception
-            self.assertFalse(result2)
-
-    @unittest.skip("Badge notification system not yet implemented")
-    def test_badge_notification_system(self):
-        """Test badge notification functionality if implemented.
-
-        Returns:
-            None
-        """
-        BadgeService.initialize_badges()
-        user = User(username="testuser", email="test@example.com", password_hash="hash")
-        db.session.add(user)
-        db.session.commit()
-        
-        badge = Badge.query.first()
-        
-        # Test if badge awarding creates notifications
-        try:
-            # This would test notification creation
-            notifications = BadgeService.award_badge_with_notification(user.id, badge.name)
-            self.assertIsNotNone(notifications)
-        except AttributeError:
-            # Notification system not implemented yet
-            self.skipTest("Badge notification system not yet implemented")
-
-    def test_badge_export_import(self):
-        """Test badge data export/import functionality if implemented.
-
-        Returns:
-            None
-        """
-        BadgeService.initialize_badges()
-        
-        # Test badge export
-        try:
-            exported_badges = BadgeService.export_badges()
-            self.assertIsInstance(exported_badges, (list, dict))
-            
-            # Test badge import
-            imported_count = BadgeService.import_badges(exported_badges)
-            self.assertIsInstance(imported_count, int)
-        except AttributeError:
-            # Export/import not implemented yet
-            self.skipTest("Badge export/import not yet implemented")
 
 
 class TestInitializeBadges(BadgeServiceTestCase):
