@@ -2,7 +2,9 @@
 
 import logging
 from datetime import timedelta, date
+from smtplib import SMTPException
 from sqlalchemy import func, and_
+from sqlalchemy.exc import SQLAlchemyError
 from ..models import User, ScreenTimeLog, Friendship  
 from .badge_service import BadgeService
 from .screen_time_service import ScreenTimeService
@@ -40,7 +42,7 @@ class BadgeAchievementService:
             awarded_badges.extend(BadgeAchievementService._check_social_badges(user))
             awarded_badges.extend(BadgeAchievementService._check_leaderboard_badges(user))
             awarded_badges.extend(BadgeAchievementService._check_prestige_badges(user))
-        except Exception as e:
+        except SQLAlchemyError as e:
             logger.error(f"Error checking badges for user {user_id}: {str(e)}")
             return []
         
@@ -48,7 +50,7 @@ class BadgeAchievementService:
         for badge_name in awarded_badges:
             try:
                 send_badge_notification(user.email, user.username, badge_name)
-            except Exception as e:
+            except (SMTPException, ConnectionError, OSError) as e:
                 # Log the error but don't fail the badge awarding
                 logger.warning(
                     f"Failed to send badge email for {badge_name} "
