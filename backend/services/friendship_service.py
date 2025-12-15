@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Dict, List, Optional
 
 from sqlalchemy import or_
@@ -9,6 +10,12 @@ from sqlalchemy.orm import selectinload
 
 from ..database import db
 from ..models import Friendship, User
+from .email_service import (
+    send_friend_request_notification,
+    send_friend_request_accepted_notification
+)
+
+logger = logging.getLogger(__name__)
 
 
 class ValidationError(Exception):
@@ -102,6 +109,22 @@ class FriendshipService:
                 )
                 db.session.add(friendship)
                 db.session.commit()
+                
+                # Send email notification to the target user
+                try:
+                    requester = User.query.get(requester_id)
+                    if requester and target_user.email:
+                        send_friend_request_notification(
+                            target_user.email,
+                            target_user.username,
+                            requester.username
+                        )
+                except Exception as e:
+                    # Log the error but don't fail the friend request
+                    logger.warning(
+                        f"Failed to send friend request email: {str(e)}"
+                    )
+                
                 return friendship
 
         friendship = Friendship(
@@ -112,6 +135,22 @@ class FriendshipService:
 
         db.session.add(friendship)
         db.session.commit()
+
+        # Send email notification to the target user
+        try:
+            requester = User.query.get(requester_id)
+            if requester and target_user.email:
+                send_friend_request_notification(
+                    target_user.email,
+                    target_user.username,
+                    requester.username
+                )
+        except Exception as e:
+            # Log the error but don't fail the friend request
+            logger.warning(
+                f"Failed to send friend request email to "
+                f"{target_user.email}: {str(e)}"
+            )
 
         return friendship
 
@@ -140,6 +179,23 @@ class FriendshipService:
 
         friendship.status = "accepted"
         db.session.commit()
+        
+        # Send email notification to the original requester
+        try:
+            requester = User.query.get(friendship.user_id)
+            accepter = User.query.get(user_id)
+            if requester and accepter and requester.email:
+                send_friend_request_accepted_notification(
+                    requester.email,
+                    requester.username,
+                    accepter.username
+                )
+        except Exception as e:
+            # Log the error but don't fail the acceptance
+            logger.warning(
+                f"Failed to send friend acceptance email: {str(e)}"
+            )
+        
         return friendship
 
     @staticmethod
