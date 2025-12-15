@@ -3,11 +3,15 @@ Authentication Blueprint for Screen Time Competition
 Handles user registration, login, logout
 """
 
+import logging
 from flask import Blueprint, request, jsonify, make_response
 from flask_login import login_user, logout_user, login_required, current_user
 from ..database import db
 from ..services.auth_service import AuthService
+from ..services.email_service import send_welcome_email
 from ..utils.helpers import add_api_headers
+
+logger = logging.getLogger(__name__)
 
 # Create blueprint
 auth_bp = Blueprint("auth", __name__, url_prefix="/api/auth")
@@ -61,6 +65,16 @@ def register():
         # Create user
         new_user = AuthService.create_user(username, email, password)
         login_user(new_user)
+
+        # Send welcome email (non-blocking - don't fail if email fails)
+        try:
+            send_welcome_email(new_user.email, new_user.username)
+        except Exception as email_error:
+            # Log the error but don't fail the registration
+            logger.warning(
+                f"Failed to send welcome email to {new_user.email}: "
+                f"{str(email_error)}"
+            )
 
         response = make_response(
             jsonify(
@@ -197,7 +211,7 @@ def forgot_password():
 
         # Send email if user exists (token will be None if user doesn't exist)
         if reset_token:
-            from .email_service import send_password_reset_email
+            from ..services.email_service import send_password_reset_email
             send_password_reset_email(email, reset_token)
 
         # Always return same message (don't reveal if email exists)
