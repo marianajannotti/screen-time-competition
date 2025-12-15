@@ -1,4 +1,3 @@
-
 import React, { useMemo, useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { getScreenTimeEntries } from '../api/screenTimeApi'
@@ -9,11 +8,6 @@ import WeeklyChart from '../components/dashboard/WeeklyChart'
 import GoalModal from '../components/dashboard/GoalModal'
 import ChallengeRow from '../components/dashboard/ChallengeRow'
 import ChallengeModal from '../components/dashboard/ChallengeModal'
-
-// Helper to format a Date as YYYY-MM-DD
-function formatDate(date) {
-  return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`
-}
 
 // Normalize user id from different possible shapes
 function getUserId(u) {
@@ -111,7 +105,7 @@ export default function Dashboard() {
   }, [user])
 
   const todayApps = useMemo(() => {
-    const todayStr = formatDate(new Date())
+    const todayStr = new Date().toISOString().slice(0,10)
     const groups = {}
     logs.filter(l => l.date === todayStr && l.app !== '__TOTAL__').forEach(l => {
       groups[l.app] = (groups[l.app]||0) + l.minutes
@@ -122,7 +116,7 @@ export default function Dashboard() {
   const topApps = todayApps
 
   const todayTotal = useMemo(()=>{
-    const todayStr = formatDate(new Date())
+    const todayStr = new Date().toISOString().slice(0,10)
     const t = logs.find(l => l.date === todayStr && l.app === '__TOTAL__')
     return t ? t.minutes : undefined
   }, [logs])
@@ -151,25 +145,22 @@ export default function Dashboard() {
   
   // Get current week (Sunday to Saturday)
   const today = new Date()
-  const todayStr = formatDate(today)
+  const todayStr = today.toISOString().slice(0,10)
   const currentDayOfWeek = today.getDay() // 0 = Sunday, 6 = Saturday
   
-  // Generate all days of current week (Sun-Sat) - use local date to avoid timezone issues
+  // Generate all days of current week (Sun-Sat)
   const currentWeekDays = Array.from({length:7}, (_,i)=>{
     const d = new Date(today.getFullYear(), today.getMonth(), today.getDate() - currentDayOfWeek + i)
-    return {
-      dateStr: formatDate(d),
-      dayLabel: d.toLocaleDateString('en-US',{weekday:'short'})
-    }
+    return d.toISOString().slice(0,10)
   })
   
   const chartData = {}
-  currentWeekDays.forEach(({dateStr, dayLabel}) => {
+  currentWeekDays.forEach(ds => {
     // Only show data for days up to and including today (not future days)
-    if (dateStr > todayStr) return
+    if (ds > todayStr) return
     
     // build day entry
-    const dayLogs = logs.filter(l => l.date === dateStr)
+    const dayLogs = logs.filter(l => l.date === ds)
     if (!dayLogs.length) return
     const totalEntry = dayLogs.find(l => l.app === '__TOTAL__')
     const apps = {}
@@ -179,7 +170,7 @@ export default function Dashboard() {
     else total = Object.values(apps).reduce((a,b)=>a+b,0)
     const stackedSum = Object.values(apps).reduce((a,b)=>a+b,0)
     const remainder = Math.max(0, total - stackedSum)
-    chartData[dayLabel] = { apps, remainder, total }
+    chartData[new Date(ds).toLocaleDateString('en-US',{weekday:'short'})] = { apps, remainder, total }
   })
   const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']
 
@@ -285,7 +276,6 @@ export default function Dashboard() {
             <div className="top-app-card" style={{ background: 'linear-gradient(180deg,#fff,#fafcff)' }}>
               <div className="app-inner">
                 <div className="usage-main">{todayTotal !== undefined ? minutesLabel(todayTotal) : <span style={{fontSize:'12px'}}>Log your Total Screen Time</span>}</div>
-                <div className="usage-sub">Total Screen Time</div>
                 {todayTotal === undefined && (
                   <div className="usage-sub">Click on the +Log Hours button on the bottom right to log your hours</div>
                 )}
@@ -301,7 +291,7 @@ export default function Dashboard() {
             ))}
           </div>
 
-          <div className="chart-card" style={{paddingLeft: '18px'}}>
+          <div className="chart-card">
             <h3>Last Week's Screen Time</h3>
             <WeeklyChart days={days} chartData={chartData} appColorMap={appColorMap} />
             <div className="chart-legend" style={{display:'flex',flexWrap:'wrap',gap:12,marginTop:10}}>
