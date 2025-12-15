@@ -1,3 +1,4 @@
+
 import React, { useMemo, useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { getScreenTimeEntries } from '../api/screenTimeApi'
@@ -8,6 +9,11 @@ import WeeklyChart from '../components/dashboard/WeeklyChart'
 import GoalModal from '../components/dashboard/GoalModal'
 import ChallengeRow from '../components/dashboard/ChallengeRow'
 import ChallengeModal from '../components/dashboard/ChallengeModal'
+
+// Helper to format a Date as YYYY-MM-DD
+function formatDate(date) {
+  return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`
+}
 
 // Normalize user id from different possible shapes
 function getUserId(u) {
@@ -105,7 +111,7 @@ export default function Dashboard() {
   }, [user])
 
   const todayApps = useMemo(() => {
-    const todayStr = new Date().toISOString().slice(0,10)
+    const todayStr = formatDate(new Date())
     const groups = {}
     logs.filter(l => l.date === todayStr && l.app !== '__TOTAL__').forEach(l => {
       groups[l.app] = (groups[l.app]||0) + l.minutes
@@ -116,7 +122,7 @@ export default function Dashboard() {
   const topApps = todayApps
 
   const todayTotal = useMemo(()=>{
-    const todayStr = new Date().toISOString().slice(0,10)
+    const todayStr = formatDate(new Date())
     const t = logs.find(l => l.date === todayStr && l.app === '__TOTAL__')
     return t ? t.minutes : undefined
   }, [logs])
@@ -145,14 +151,14 @@ export default function Dashboard() {
   
   // Get current week (Sunday to Saturday)
   const today = new Date()
-  const todayStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`
+  const todayStr = formatDate(today)
   const currentDayOfWeek = today.getDay() // 0 = Sunday, 6 = Saturday
   
   // Generate all days of current week (Sun-Sat) - use local date to avoid timezone issues
   const currentWeekDays = Array.from({length:7}, (_,i)=>{
     const d = new Date(today.getFullYear(), today.getMonth(), today.getDate() - currentDayOfWeek + i)
     return {
-      dateStr: `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`,
+      dateStr: formatDate(d),
       dayLabel: d.toLocaleDateString('en-US',{weekday:'short'})
     }
   })
