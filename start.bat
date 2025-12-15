@@ -33,6 +33,9 @@ if errorlevel 1 (
     exit /b 1
 )
 
+echo Using Python: !PYTHON_EXE!
+!PYTHON_EXE! --version
+
 
 REM Check if npm is available
 call npm --version >nul 2>&1
