@@ -191,3 +191,4 @@ curl -s "http://localhost:5001/api/auth/me" -b cookies.txt
 ---
 
 **CS162 Final Project**
+Demo video link: https://drive.google.com/drive/folders/183d7FoNl41j6zvmeHnKYbiIzJT1Z87Wo?usp=sharing
