@@ -80,7 +80,7 @@ class BadgeService:
             {'name': 'The Connector', 'desc': 'Add 10 friends.', 'type': 'social', 'icon': '👥'},
             {'name': 'Challenge Accepted', 'desc': 'Join your first challenge.', 'type': 'social', 'icon': '👥'},
             {'name': 'Friendly Rival', 'desc': 'Participate in 5 challenges.', 'type': 'social', 'icon': '👥'},
-            {'name': 'Community Champion', 'desc': 'Win a weekly challenge among friends.', 'type': 'social', 'icon': '👥'},
+            {'name': 'Community Champion', 'desc': 'Win a challenge among friends.', 'type': 'social', 'icon': '👥'},
             
             # Leaderboard
             {'name': 'Top 10%', 'desc': 'Be in top 10% of the leaderboard in a week.', 'type': 'leaderboard', 'icon': '🏆'},
