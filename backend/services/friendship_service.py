@@ -181,6 +181,14 @@ class FriendshipService:
         friendship.status = "accepted"
         db.session.commit()
         
+        # Check and award badges for both users (both got a new friend!)
+        try:
+            from .badge_achievement_service import BadgeAchievementService
+            BadgeAchievementService.check_and_award_badges(user_id)  # Accepter
+            BadgeAchievementService.check_and_award_badges(friendship.user_id)  # Requester
+        except Exception as e:
+            logger.error(f"Error checking badges after accepting friendship: {e}")
+        
         # Send email notification to the original requester
         try:
             requester = User.query.get(friendship.user_id)
@@ -191,7 +199,7 @@ class FriendshipService:
                     requester.username,
                     accepter.username
                 )
-        except (SMTPException, ConnectionError, OSError) as e:
+        except Exception as e:
             # Log the error but don't fail the acceptance
             logger.warning(
                 f"Failed to send friend acceptance email: {str(e)}"

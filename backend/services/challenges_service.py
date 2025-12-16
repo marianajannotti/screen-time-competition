@@ -434,7 +434,8 @@ class ChallengesService:
             if participant.days_logged > 0:
                 avg_daily = round(participant.total_screen_time_minutes / participant.days_logged, 2)
             else:
-                avg_daily = None  # Use None instead of infinity for JSON serialization
+                # No logs = 0.0 average (best for zero-target challenges, neutral otherwise)
+                avg_daily = 0.0
             
             leaderboard.append({
                 'user_id': user.id,
@@ -458,8 +459,9 @@ class ChallengesService:
                 x['final_rank'] if x['final_rank'] is not None else float('inf')  # Then by final rank
             ))
         else:
-            # For active challenges, sort by average daily screen time (lowest first, None values last)
-            leaderboard.sort(key=lambda x: (x['average_daily_minutes'] is None, x['average_daily_minutes'] or 0))
+            # For active challenges, sort by average daily screen time (lowest first)
+            # Note: average_daily_minutes is always a number (0.0 if no logs)
+            leaderboard.sort(key=lambda x: x['average_daily_minutes'])
         
         return challenge, leaderboard
 

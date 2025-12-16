@@ -101,5 +101,11 @@ def create_app(config_name: str | None = None) -> Flask:
     # Create database tables
     with app.app_context():
         db.create_all()
+        
+        # Initialize badges if they don't exist
+        from .services.badge_service import BadgeService
+        from .models import Badge
+        if Badge.query.count() == 0:
+            BadgeService.initialize_badges()
 
     return app
