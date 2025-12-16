@@ -45,6 +45,10 @@ class TestingConfig(Config):
 
     TESTING = True
     SQLALCHEMY_DATABASE_URI = "sqlite:///:memory:"  # Temporary database
+    
+    # Override mail settings for testing
+    MAIL_DEFAULT_SENDER = "test@example.com"
+    MAIL_SUPPRESS_SEND = True  # Don't actually send emails during tests
 
 
 class ProductionConfig(Config):

@@ -50,7 +50,7 @@ class BadgeAchievementService:
         for badge_name in awarded_badges:
             try:
                 send_badge_notification(user.email, user.username, badge_name)
-            except (SMTPException, ConnectionError, OSError) as e:
+            except Exception as e:
                 # Log the error but don't fail the badge awarding
                 logger.warning(
                     f"Failed to send badge email for {badge_name} "
