@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-from smtplib import SMTPException
 from typing import Dict, List, Optional
 
 from sqlalchemy import or_
@@ -120,7 +119,7 @@ class FriendshipService:
                             target_user.username,
                             requester.username
                         )
-                except (SMTPException, ConnectionError, OSError) as e:
+                except Exception as e:
                     # Log the error but don't fail the friend request
                     logger.warning(
                         f"Failed to send friend request email: {str(e)}"

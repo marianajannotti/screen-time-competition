@@ -445,18 +445,17 @@ class ChallengesService:
                 'days_passed': participant.days_passed,
                 'days_failed': participant.days_failed,
                 'average_daily_minutes': avg_daily,
-                'rank': participant.final_rank,  # Include rank for display
-                'final_rank': participant.final_rank,
+                'rank': participant.final_rank,
                 'is_winner': participant.is_winner,
                 'invitation_status': participant.invitation_status
             })
         
         # Sort leaderboard
         if challenge.status == 'completed':
-            # For completed challenges, sort by final_rank (with accepted participants first)
+            # For completed challenges, sort by rank (with accepted participants first)
             leaderboard.sort(key=lambda x: (
                 x['invitation_status'] != 'accepted',  # Accepted participants first
-                x['final_rank'] if x['final_rank'] is not None else float('inf')  # Then by final rank
+                x['rank'] if x['rank'] is not None else float('inf')  # Then by rank
             ))
         else:
             # For active challenges, sort by average daily screen time (lowest first)
