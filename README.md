@@ -76,7 +76,47 @@ cd frontend
 npm run dev
 ```
 
-## �️ Troubleshooting
+## 🌱 Database Seeding (Optional)
+
+For consistent test data across all developers, you can seed the database with sample users, friendships, screen time entries, badges, and challenges.
+
+### Quick Seed
+
+**macOS/Linux:**
+```bash
+./seed.sh
+```
+
+**Windows:**
+```bash
+seed.bat
+```
+
+### What Gets Created
+
+The seed script creates:
+- **5 Test Users** (all with password: `password123`)
+  - `alice@example.com` - Active user with most data
+  - `bob@example.com` - Moderate user
+  - `charlie@example.com` - Light user
+  - `diana@example.com` - New user
+  - `eve@example.com` - New user
+- **6 Friendships** (4 accepted, 2 pending)
+- **43 Screen Time Entries** (last 30 days)
+- **5 Badges** with 3 awarded to users
+- **3 Challenges** (2 active, 1 completed)
+
+### Manual Seed
+
+If you prefer to run the seed script manually:
+```bash
+source venv/bin/activate  # Activate venv if created
+python backend/seed_database.py
+```
+
+**⚠️ Warning:** This will **clear all existing data** in your database!
+
+## 🛠️ Troubleshooting
 
 ### Common Issues
 
@@ -191,3 +231,4 @@ curl -s "http://localhost:5001/api/auth/me" -b cookies.txt
 ---
 
 **CS162 Final Project**
+Demo video link: https://drive.google.com/drive/folders/183d7FoNl41j6zvmeHnKYbiIzJT1Z87Wo?usp=sharing
