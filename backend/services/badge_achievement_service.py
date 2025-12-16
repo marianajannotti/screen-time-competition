@@ -146,12 +146,16 @@ class BadgeAchievementService:
     @staticmethod
     def _check_social_badges(user: User):
         """Check and award social interaction badges."""
+        from sqlalchemy import or_
         awarded = []
         
-        # Count friendships
+        # Count friendships (both sent and received)
         friend_count = Friendship.query.filter(
             and_(
-                Friendship.user_id == user.id,
+                or_(
+                    Friendship.user_id == user.id,
+                    Friendship.friend_id == user.id
+                ),
                 Friendship.status == 'accepted'
             )
         ).count()
