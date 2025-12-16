@@ -40,6 +40,7 @@ class BadgeAchievementService:
             awarded_badges.extend(BadgeAchievementService._check_streak_badges(user))
             awarded_badges.extend(BadgeAchievementService._check_reduction_badges(user))
             awarded_badges.extend(BadgeAchievementService._check_social_badges(user))
+            awarded_badges.extend(BadgeAchievementService._check_challenge_badges(user))
             awarded_badges.extend(BadgeAchievementService._check_leaderboard_badges(user))
             awarded_badges.extend(BadgeAchievementService._check_prestige_badges(user))
         except SQLAlchemyError as e:
@@ -159,6 +160,44 @@ class BadgeAchievementService:
             success, _ = BadgeService.award_badge(user.id, 'The Connector')
             if success:
                 awarded.append('The Connector')
+        
+        return awarded
+    
+    @staticmethod
+    def _check_challenge_badges(user: User):
+        """Check and award challenge-related badges."""
+        from ..models.challenge import ChallengeParticipant
+        
+        awarded = []
+        
+        # Count accepted challenges (excludes declined invitations)
+        accepted_challenges = ChallengeParticipant.query.filter(
+            ChallengeParticipant.user_id == user.id,
+            ChallengeParticipant.invitation_status == 'accepted'
+        ).count()
+        
+        # Challenge Accepted - Join first challenge
+        if accepted_challenges >= 1:
+            success, _ = BadgeService.award_badge(user.id, 'Challenge Accepted')
+            if success:
+                awarded.append('Challenge Accepted')
+        
+        # Friendly Rival - Participate in 5 challenges
+        if accepted_challenges >= 5:
+            success, _ = BadgeService.award_badge(user.id, 'Friendly Rival')
+            if success:
+                awarded.append('Friendly Rival')
+        
+        # Community Champion - Win at least one challenge
+        won_challenge = ChallengeParticipant.query.filter(
+            ChallengeParticipant.user_id == user.id,
+            ChallengeParticipant.is_winner == True
+        ).first()
+        
+        if won_challenge:
+            success, _ = BadgeService.award_badge(user.id, 'Community Champion')
+            if success:
+                awarded.append('Community Champion')
         
         return awarded
     
