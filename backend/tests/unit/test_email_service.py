@@ -1,187 +1,193 @@
-"""Unit tests for the EmailService.
+"""Unit tests for email service functions."""
 
-This module contains test cases for the email service functions,
-covering password reset email sending functionality.
-"""
 import unittest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
+import os
 from flask import Flask
+from flask_mail import Mail
 
-from backend import create_app
-from backend.services.email_service import send_password_reset_email
+from backend.services.email_service import (
+    send_password_reset_email,
+    send_badge_notification,
+    send_friend_request_notification,
+    send_friend_request_accepted_notification,
+    send_welcome_email
+)
 
 
-class EmailServiceTestCase(unittest.TestCase):
-    """Base test case for EmailService unit tests.
-
-    Provides common setup and teardown for all email service tests.
-    """
+class TestEmailService(unittest.TestCase):
+    """Test email service functions."""
 
     def setUp(self):
-        """Create app context and test fixtures.
-
-        Returns:
-            None
-        """
-        self.app = create_app("testing")
-        self.app_context = self.app.app_context()
-        self.app_context.push()
+        """Set up test fixtures."""
+        # Get the template directory path
+        base_dir = os.path.dirname(__file__)
+        template_dir = os.path.join(base_dir, '..', '..', 'templates')
         
-        # Test data
-        self.test_email = "test@example.com"
-        self.test_token = "test_reset_token_123"
+        self.app = Flask(__name__, template_folder=template_dir)
+        self.app.config['TESTING'] = True
+        self.app.config['MAIL_SERVER'] = 'smtp.gmail.com'
+        self.app.config['MAIL_PORT'] = 587
+        self.app.config['MAIL_USE_TLS'] = True
+        self.app.config['MAIL_USERNAME'] = 'test@example.com'
+        self.app.config['MAIL_PASSWORD'] = 'testpassword'
+        self.app.config['MAIL_DEFAULT_SENDER'] = 'test@example.com'
+        self.app.config['FRONTEND_URL'] = 'http://localhost:5173'
+        
+        # Initialize Flask-Mail
+        self.mail = Mail(self.app)
+        
+        # Create application context
+        self.ctx = self.app.app_context()
+        self.ctx.push()
 
     def tearDown(self):
-        """Clean up app context.
-
-        Returns:
-            None
-        """
-        self.app_context.pop()
+        """Clean up after tests."""
+        self.ctx.pop()
 
     @patch('backend.mail')
-    @patch('backend.services.email_service.render_template')
-    def test_send_password_reset_email_success(self, mock_render_template, mock_mail):
-        """Test successful password reset email sending.
-
-        Args:
-            mock_render_template: Mock for render_template function
-            mock_mail: Mock for mail object
-
-        Returns:
-            None
-        """
-        # Setup mocks
-        mock_render_template.side_effect = lambda template, **kwargs: f"rendered_{template}"
-        mock_mail.send = MagicMock()
-
-        # Execute
-        send_password_reset_email(self.test_email, self.test_token)
-
-        # Verify mail was sent
+    def test_send_password_reset_email(self, mock_mail):
+        """Test sending password reset email."""
+        email = 'user@example.com'
+        reset_token = 'test-token-123'
+        
+        send_password_reset_email(email, reset_token)
+        
+        # Verify email was sent
         mock_mail.send.assert_called_once()
         
-        # Verify templates were rendered
-        self.assertEqual(mock_render_template.call_count, 2)  # HTML and text templates
-
-    @patch('backend.mail')
-    @patch('backend.services.email_service.render_template')
-    def test_send_password_reset_email_with_templates(self, mock_render_template, mock_mail):
-        """Test password reset email with HTML and text templates.
-
-        Args:
-            mock_render_template: Mock for render_template function
-            mock_mail: Mock for mail object
-
-        Returns:
-            None
-        """
-        # Setup mocks
-        mock_render_template.side_effect = lambda template, **kwargs: f"rendered_{template}"
-        mock_mail.send = MagicMock()
-
-        # Execute
-        send_password_reset_email(self.test_email, self.test_token)
-
-        # Verify templates were rendered with correct context
-        expected_calls = [
-            unittest.mock.call('emails/password_reset.html', 
-                             reset_url=f"http://localhost:5173/reset-password?token={self.test_token}"),
-            unittest.mock.call('emails/password_reset.txt', 
-                             reset_url=f"http://localhost:5173/reset-password?token={self.test_token}")
-        ]
-        mock_render_template.assert_has_calls(expected_calls, any_order=False)
-
-    @patch('backend.services.email_service.current_app')
-    @patch('backend.mail')
-    def test_send_password_reset_email_custom_frontend_url(self, mock_mail, mock_current_app):
-        """Test password reset email with custom frontend URL.
-
-        Args:
-            mock_mail: Mock for mail object
-            mock_current_app: Mock for current_app
-
-        Returns:
-            None
-        """
-        # Setup mocks
-        custom_url = "https://myapp.com"
-        mock_current_app.config.get.return_value = custom_url
-        mock_mail.send = MagicMock()
-
-        # Execute
-        send_password_reset_email(self.test_email, self.test_token)
-
-        # Verify custom URL was used
-        mock_current_app.config.get.assert_called_with("FRONTEND_URL", "http://localhost:5173")
-
-    @patch('backend.mail')
-    def test_send_password_reset_email_failure(self, mock_mail):
-        """Test password reset email sending failure.
-
-        Args:
-            mock_mail: Mock for mail object that raises exception
-
-        Returns:
-            None
-        """
-        # Setup mock to raise exception
-        mock_mail.send.side_effect = Exception("Mail server error")
-
-        # Execute and verify exception is raised
-        with self.assertRaises(Exception) as context:
-            send_password_reset_email(self.test_email, self.test_token)
-
-        self.assertEqual(str(context.exception), "Mail server error")
-
-    @patch('backend.mail')
-    def test_send_password_reset_email_with_special_token(self, mock_mail):
-        """Test password reset email with special characters in token.
-
-        Args:
-            mock_mail: Mock for mail object
-
-        Returns:
-            None
-        """
-        # Setup mock
-        mock_mail.send = MagicMock()
+        # Get the message that was sent
+        sent_message = mock_mail.send.call_args[0][0]
         
-        special_token = "special.token.with.dots"
+        # Verify email properties
+        self.assertEqual(sent_message.recipients, [email])
+        self.assertIn('Password Reset', sent_message.subject)
+        self.assertIn(reset_token, sent_message.html)
+        self.assertIn(reset_token, sent_message.body)
+
+    @patch('backend.mail')
+    def test_send_badge_notification(self, mock_mail):
+        """Test sending badge earned notification."""
+        email = 'user@example.com'
+        username = 'testuser'
+        badge_name = 'Fresh Start'
         
-        # Execute - should not raise an exception
-        send_password_reset_email(self.test_email, special_token)
+        send_badge_notification(email, username, badge_name)
         
-        # Verify it completed successfully
+        # Verify email was sent
         mock_mail.send.assert_called_once()
-
-    @patch('backend.mail')  
-    def test_send_password_reset_email_basic_functionality(self, mock_mail):
-        """Test basic password reset email functionality.
-
-        Args:
-            mock_mail: Mock for mail object
-
-        Returns:
-            None
-        """
-        # Setup mock
-        mock_mail.send = MagicMock()
         
-        # Execute with various inputs
-        test_cases = [
-            ("user@example.com", "normal_token"),
-            ("test.email+tag@domain.co.uk", "token_with_special_chars_123"),
-            ("simple@test.com", "")  # Empty token
-        ]
+        # Get the message
+        sent_message = mock_mail.send.call_args[0][0]
         
-        for email, token in test_cases:
-            with self.subTest(email=email, token=token):
-                # Should not raise an exception
-                send_password_reset_email(email, token)
-                
-        # Verify send was called for each test case
-        self.assertEqual(mock_mail.send.call_count, len(test_cases))
+        # Verify properties
+        self.assertEqual(sent_message.recipients, [email])
+        self.assertIn('Badge Unlocked', sent_message.subject)
+        self.assertIn(badge_name, sent_message.subject)
+        self.assertIn(username, sent_message.html)
+        self.assertIn(badge_name, sent_message.html)
+
+    @patch('backend.mail')
+    def test_send_friend_request_notification(self, mock_mail):
+        """Test sending friend request notification."""
+        recipient_email = 'recipient@example.com'
+        recipient_username = 'recipient'
+        requester_username = 'requester'
+        
+        send_friend_request_notification(
+            recipient_email,
+            recipient_username,
+            requester_username
+        )
+        
+        # Verify email was sent
+        mock_mail.send.assert_called_once()
+        
+        # Get the message
+        sent_message = mock_mail.send.call_args[0][0]
+        
+        # Verify properties
+        self.assertEqual(sent_message.recipients, [recipient_email])
+        self.assertIn('friend request', sent_message.subject)
+        self.assertIn(requester_username, sent_message.subject)
+        self.assertIn(recipient_username, sent_message.html)
+        self.assertIn(requester_username, sent_message.html)
+
+    @patch('backend.mail')
+    def test_send_friend_request_accepted_notification(self, mock_mail):
+        """Test sending friend request accepted notification."""
+        requester_email = 'requester@example.com'
+        requester_username = 'requester'
+        accepter_username = 'accepter'
+        
+        send_friend_request_accepted_notification(
+            requester_email,
+            requester_username,
+            accepter_username
+        )
+        
+        # Verify email was sent
+        mock_mail.send.assert_called_once()
+        
+        # Get the message
+        sent_message = mock_mail.send.call_args[0][0]
+        
+        # Verify properties
+        self.assertEqual(sent_message.recipients, [requester_email])
+        self.assertIn('accepted', sent_message.subject)
+        self.assertIn(accepter_username, sent_message.subject)
+        self.assertIn(requester_username, sent_message.html)
+        self.assertIn(accepter_username, sent_message.html)
+
+    @patch('backend.mail')
+    def test_send_welcome_email(self, mock_mail):
+        """Test sending welcome email."""
+        email = 'newuser@example.com'
+        username = 'newuser'
+        
+        send_welcome_email(email, username)
+        
+        # Verify email was sent
+        mock_mail.send.assert_called_once()
+        
+        # Get the message
+        sent_message = mock_mail.send.call_args[0][0]
+        
+        # Verify properties
+        self.assertEqual(sent_message.recipients, [email])
+        self.assertIn('Welcome', sent_message.subject)
+        self.assertIn(username, sent_message.html)
+
+    @patch('backend.mail')
+    def test_email_contains_frontend_url(self, mock_mail):
+        """Test that emails contain the configured frontend URL."""
+        email = 'user@example.com'
+        username = 'testuser'
+        
+        send_welcome_email(email, username)
+        
+        # Get the message
+        sent_message = mock_mail.send.call_args[0][0]
+        
+        # Verify frontend URL is in the email
+        self.assertIn('http://localhost:5173', sent_message.html)
+
+    @patch('backend.mail')
+    def test_email_has_plain_text_version(self, mock_mail):
+        """Test that emails include plain text versions."""
+        email = 'user@example.com'
+        username = 'testuser'
+        badge_name = 'Test Badge'
+        
+        send_badge_notification(email, username, badge_name)
+        
+        # Get the message
+        sent_message = mock_mail.send.call_args[0][0]
+        
+        # Verify both HTML and plain text versions exist
+        self.assertIsNotNone(sent_message.html)
+        self.assertIsNotNone(sent_message.body)
+        self.assertIn(badge_name, sent_message.body)
 
 
 if __name__ == '__main__':
