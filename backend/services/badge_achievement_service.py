@@ -94,8 +94,15 @@ class BadgeAchievementService:
         from ..models import ScreenTimeLog
         awarded = []
         
-        # Require at least 14 days of data before checking reduction badges
         log_count = ScreenTimeLog.query.filter_by(user_id=user.id).count()
+        
+        # One Hour Club - check if user stayed under 1h social media in a day (requires 2+ days)
+        if log_count >= 2 and ScreenTimeService.check_low_usage_day(user.id, max_minutes=60):
+            success, _ = BadgeService.award_badge(user.id, 'One Hour Club')
+            if success:
+                awarded.append('One Hour Club')
+        
+        # Require at least 14 days of data before checking other reduction badges
         if log_count < 14:
             return awarded
         
@@ -112,7 +119,7 @@ class BadgeAchievementService:
         # Calculate reduction percentage
         reduction_percent = ((baseline_avg - recent_avg) / baseline_avg) * 100
         
-        # Check reduction badges
+        # Check reduction badges (require 14+ days)
         if reduction_percent >= 5:
             success, _ = BadgeService.award_badge(user.id, 'Tiny Wins')
             if success:
@@ -128,13 +135,7 @@ class BadgeAchievementService:
             if success:
                 awarded.append('Half-Life')
         
-        # One Hour Club - check if user stayed under 1h social media in a day
-        if ScreenTimeService.check_low_usage_day(user.id, max_minutes=60):
-            success, _ = BadgeService.award_badge(user.id, 'One Hour Club')
-            if success:
-                awarded.append('One Hour Club')
-        
-        # Digital Minimalist - average < 2h/day for a week
+        # Digital Minimalist - average < 2h/day for a week (requires 14+ days)
         if recent_avg < 120:  # 2 hours = 120 minutes
             success, _ = BadgeService.award_badge(user.id, 'Digital Minimalist')
             if success:
