@@ -204,7 +204,7 @@ class BadgeAchievementService:
         # Community Champion - Win at least one challenge
         won_challenge = ChallengeParticipant.query.filter(
             ChallengeParticipant.user_id == user.id,
-            ChallengeParticipant.is_winner == True
+            ChallengeParticipant.is_winner
         ).first()
         
         if won_challenge:
