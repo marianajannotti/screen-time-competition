@@ -26,10 +26,12 @@ class BadgeAchievementService:
         Returns:
             list: List of badge names that were newly awarded
         """
+        from ..database import db
+        
         if user_id <= 0:
             return []
             
-        user = User.query.get(user_id)
+        user = db.session.get(User, user_id)
         if not user:
             return []
         
