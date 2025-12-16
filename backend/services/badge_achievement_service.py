@@ -178,7 +178,15 @@ class BadgeAchievementService:
     
     @staticmethod
     def _check_challenge_badges(user: User):
-        """Check and award challenge-related badges."""
+        """
+        Check and award challenge-related badges.
+
+        Args:
+            user (User): User object to check badges for.
+
+        Returns:
+            list: List of newly awarded badge names.
+        """
         from ..models.challenge import ChallengeParticipant
         
         awarded = []
