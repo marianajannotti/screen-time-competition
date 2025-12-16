@@ -26,7 +26,7 @@ A web application for friendly screen time competition - track daily usage, set 
 3. **Install dependencies:**
    ```bash
    # Backend
-   pip install -r requirements.txt
+   pip install -r backend/requirements.txt
    
    # Frontend
    cd frontend && npm install && cd ..
@@ -191,3 +191,4 @@ curl -s "http://localhost:5001/api/auth/me" -b cookies.txt
 ---
 
 **CS162 Final Project**
+Demo video link: https://drive.google.com/drive/folders/183d7FoNl41j6zvmeHnKYbiIzJT1Z87Wo?usp=sharing

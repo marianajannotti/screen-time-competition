@@ -1,17 +1,11 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { badgesApi } from '../api/badgesApi'
+import { getGlobalLeaderboard, getFriendships } from '../api/leaderboardApi'
 import lockIcon from '../assets/badges/lock-icon.png'
 import trophyIcon from '../assets/badges/trophy-icon.png'
 import streakIcon from '../assets/badges/streak-icon.png'
 import friendsIcon from '../assets/badges/friends-icon.png'
-
-// Temporary mocked stats - moved outside component
-const MOCK_STATS = {
-  rank: 3,
-  streakDays: 8,
-  friends: 10,
-}
 
 // Badge icons by type for visual differentiation (fallback)
 const BADGE_ICONS = {
@@ -41,6 +35,15 @@ function getBadgeIconPath(badgeName) {
 
 export default function Profile() {
   const { user } = useAuth()
+
+  // Normalize user id from different shapes across APIs
+  const getUserId = (u) => u?.user_id ?? u?.id ?? u?.userId ?? u?.uid ?? null
+
+  // Live stats
+  const [rank, setRank] = useState('—')
+  const [streakDays, setStreakDays] = useState('—')
+  const [friendCount, setFriendCount] = useState('—')
+  const [statsError, setStatsError] = useState(null)
 
   // Fallbacks while backend profile endpoints are not ready
   const displayName = useMemo(() => {
@@ -118,6 +121,41 @@ export default function Profile() {
     fetchBadgesData()
   }, [user?.id])
 
+  // Fetch leaderboard rank, streak, and friends count for the current user
+  useEffect(() => {
+    const uid = getUserId(user)
+    if (!uid) {
+      setRank('—')
+      setStreakDays('—')
+      setFriendCount('—')
+      return
+    }
+
+    let cancelled = false
+    async function loadStats() {
+      setStatsError(null)
+      try {
+        const [leaderboard, friendships] = await Promise.all([
+          getGlobalLeaderboard(),
+          getFriendships(),
+        ])
+
+        if (cancelled) return
+
+        const entry = leaderboard.find((u) => getUserId(u) === uid)
+        setRank(entry ? entry.rank ?? '—' : '—')
+        setStreakDays(entry ? (entry.streak ?? entry._streak ?? 0) : '—')
+        setFriendCount((friendships?.friends?.length ?? 0))
+      } catch (err) {
+        console.error('Failed to load profile stats', err)
+        if (!cancelled) setStatsError('Unable to load latest stats')
+      }
+    }
+
+    loadStats()
+    return () => { cancelled = true }
+  }, [user?.id, user?.streak_count])
+
   // Handle Escape key to close modal
   useEffect(() => {
     if (!modalOpen) return
@@ -160,25 +198,30 @@ export default function Profile() {
           </div>
         </div>
         <div className="profile-right">
+          {statsError && (
+            <div className="error-message" style={{ color: '#e74c3c', marginBottom: '0.5rem' }}>
+              {statsError}
+            </div>
+          )}
           <div className="profile-stat">
             <div className="icon">
               <img src={trophyIcon} alt="Trophy" style={{ width: '70px', height: '70px', objectFit: 'contain' }} />
             </div>
-            <div className="value">#{MOCK_STATS.rank}</div>
-            <div className="label">Leaderboard</div>
+            <div className="value">#{rank}</div>
+            <div className="label">Global Leaderboard</div>
           </div>
           <div className="profile-stat">
             <div className="icon">
               <img src={streakIcon} alt="Streak" style={{ width: '70px', height: '70px', objectFit: 'contain' }} />
             </div>
-            <div className="value">{MOCK_STATS.streakDays}</div>
+            <div className="value">{streakDays}</div>
             <div className="label">Day Streak</div>
           </div>
           <div className="profile-stat">
             <div className="icon">
               <img src={friendsIcon} alt="Friends" style={{ width: '70px', height: '70px', objectFit: 'contain' }} />
             </div>
-            <div className="value">{MOCK_STATS.friends}</div>
+            <div className="value">{friendCount}</div>
             <div className="label">Friends</div>
           </div>
         </div>
@@ -348,3 +391,4 @@ function formatEarnedDate(dateString) {
     return ''
   }
 }
+

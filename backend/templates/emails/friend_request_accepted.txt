@@ -1,0 +1,19 @@
+You're Now Friends! 🎉
+
+Hey {{ requester_username }}!
+
+Great news — {{ accepter_username }} just accepted your friend request! Time to compete and motivate each other to crush those screen time goals together.
+
+You can now:
+- See each other on the leaderboard
+- Compare your progress
+- Celebrate achievements together
+
+View your friends at: {{ friends_url }}
+
+Pro tip: Friends who compete together, succeed together. Keep each other accountable!
+
+---
+Keep crushing it! 💪
+The Offy Team
+Helping you win the battle against screen time

@@ -45,7 +45,7 @@ fi
 echo "🔍 Checking backend dependencies..."
 if ! python -c "import flask, flask_login, flask_cors, flask_mail, flask_sqlalchemy" 2>/dev/null; then
     echo "⚠️  Some backend dependencies missing. Installing..."
-    pip install -r requirements.txt
+    pip install -r backend/requirements.txt
 else
     echo "✅ Backend dependencies installed"
 fi

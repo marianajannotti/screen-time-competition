@@ -1,17 +1,20 @@
 import React, { useMemo, useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { getScreenTimeEntries } from '../api/screenTimeApi'
-import { getChallenges } from '../api/mockApi'
+import { getChallenges, deleteChallenge, leaveChallenge } from '../api/challengesApi'
 import { minutesLabel } from '../utils/timeFormatters'
+import { getUserId } from '../utils/challengeHelpers'
 import ProgressBar from '../components/dashboard/ProgressBar'
 import WeeklyChart from '../components/dashboard/WeeklyChart'
 import GoalModal from '../components/dashboard/GoalModal'
 import ChallengeRow from '../components/dashboard/ChallengeRow'
+import PastChallengeRow from '../components/dashboard/PastChallengeRow'
 import ChallengeModal from '../components/dashboard/ChallengeModal'
+import ChallengeDetailsModal from '../components/dashboard/ChallengeDetailsModal'
 
-// Normalize user id from different possible shapes
-function getUserId(u) {
-  return u?.user_id ?? u?.id ?? u?.userId ?? u?.uid ?? null
+// Helper to format a Date as YYYY-MM-DD
+function formatDate(date) {
+  return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`
 }
 
 export default function Dashboard() {
@@ -29,6 +32,7 @@ export default function Dashboard() {
   const [showDailyModal, setShowDailyModal] = useState(false)
   const [showWeeklyModal, setShowWeeklyModal] = useState(false)
   const [showChallengeModal, setShowChallengeModal] = useState(false)
+  const [selectedChallenge, setSelectedChallenge] = useState(null)
   const [challenges, setChallenges] = useState([])
   const [logs, setLogs] = useState([])
   const [loading, setLoading] = useState(true)
@@ -93,10 +97,11 @@ export default function Dashboard() {
     if (!user) { setChallenges([]); return }
     ;(async () => {
       try {
-        const res = await getChallenges(getUserId(user))
+        const challengesList = await getChallenges()
         if (!mounted) return
-        setChallenges(Array.isArray(res.challenges) ? res.challenges : [])
+        setChallenges(Array.isArray(challengesList) ? challengesList : [])
       } catch (err) {
+        console.error('Error fetching challenges:', err)
         if (!mounted) return
         setChallenges([])
       }
@@ -104,8 +109,17 @@ export default function Dashboard() {
     return () => { mounted = false }
   }, [user])
 
+  // Separate active/upcoming challenges from completed ones
+  const activeChallenges = useMemo(() => {
+    return challenges.filter(c => c.status === 'active' || c.status === 'upcoming')
+  }, [challenges])
+
+  const pastChallenges = useMemo(() => {
+    return challenges.filter(c => c.status === 'completed')
+  }, [challenges])
+
   const todayApps = useMemo(() => {
-    const todayStr = new Date().toISOString().slice(0,10)
+    const todayStr = formatDate(new Date())
     const groups = {}
     logs.filter(l => l.date === todayStr && l.app !== '__TOTAL__').forEach(l => {
       groups[l.app] = (groups[l.app]||0) + l.minutes
@@ -116,7 +130,7 @@ export default function Dashboard() {
   const topApps = todayApps
 
   const todayTotal = useMemo(()=>{
-    const todayStr = new Date().toISOString().slice(0,10)
+    const todayStr = formatDate(new Date())
     const t = logs.find(l => l.date === todayStr && l.app === '__TOTAL__')
     return t ? t.minutes : undefined
   }, [logs])
@@ -145,22 +159,25 @@ export default function Dashboard() {
   
   // Get current week (Sunday to Saturday)
   const today = new Date()
-  const todayStr = today.toISOString().slice(0,10)
+  const todayStr = formatDate(today)
   const currentDayOfWeek = today.getDay() // 0 = Sunday, 6 = Saturday
   
-  // Generate all days of current week (Sun-Sat)
+  // Generate all days of current week (Sun-Sat) - use local date to avoid timezone issues
   const currentWeekDays = Array.from({length:7}, (_,i)=>{
     const d = new Date(today.getFullYear(), today.getMonth(), today.getDate() - currentDayOfWeek + i)
-    return d.toISOString().slice(0,10)
+    return {
+      dateStr: formatDate(d),
+      dayLabel: d.toLocaleDateString('en-US',{weekday:'short'})
+    }
   })
   
   const chartData = {}
-  currentWeekDays.forEach(ds => {
+  currentWeekDays.forEach(({dateStr, dayLabel}) => {
     // Only show data for days up to and including today (not future days)
-    if (ds > todayStr) return
+    if (dateStr > todayStr) return
     
     // build day entry
-    const dayLogs = logs.filter(l => l.date === ds)
+    const dayLogs = logs.filter(l => l.date === dateStr)
     if (!dayLogs.length) return
     const totalEntry = dayLogs.find(l => l.app === '__TOTAL__')
     const apps = {}
@@ -170,7 +187,7 @@ export default function Dashboard() {
     else total = Object.values(apps).reduce((a,b)=>a+b,0)
     const stackedSum = Object.values(apps).reduce((a,b)=>a+b,0)
     const remainder = Math.max(0, total - stackedSum)
-    chartData[new Date(ds).toLocaleDateString('en-US',{weekday:'short'})] = { apps, remainder, total }
+    chartData[dayLabel] = { apps, remainder, total }
   })
   const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']
 
@@ -218,10 +235,10 @@ export default function Dashboard() {
             <div className="card-head">
               <span className="icon clock" />
               <span className="title">Daily Limit</span>
-        <button className="add-btn" aria-label={dailyGoal === undefined ? "Add daily limit" : "Edit daily limit"} title={dailyGoal === undefined ? "Add daily limit" : "Edit daily limit"} onClick={()=>setShowDailyModal(true)}>{dailyGoal === undefined ? '+' : '✏️'}</button>
+        <button className="add-btn" style={dailyGoal === undefined ? {fontSize: '20px'} : {}} aria-label={dailyGoal === undefined ? "Add daily limit" : "Edit daily limit"} title={dailyGoal === undefined ? "Add daily limit" : "Edit daily limit"} onClick={()=>setShowDailyModal(true)}>{dailyGoal === undefined ? '+' : 'Edit'}</button>
             </div>
             {dailyGoal === undefined ? (
-              <p className="muted small" style={{margin:0}}>Create a new limit by clicking +</p>
+              <p className="muted small" style={{margin:0,marginTop:8}}>Create a new limit by clicking +</p>
             ) : (
               <>
                 <ProgressBar value={dailyUsed || 0} max={dailyGoal} color="#d97706" exceeded={dailyUsed > dailyGoal} />
@@ -236,10 +253,10 @@ export default function Dashboard() {
             <div className="card-head">
               <span className="icon target" />
               <span className="title">Weekly Limit</span>
-        <button className="add-btn" aria-label={weeklyGoal === undefined ? "Add weekly limit" : "Edit weekly limit"} title={weeklyGoal === undefined ? "Add weekly limit" : "Edit weekly limit"} onClick={()=>setShowWeeklyModal(true)}>{weeklyGoal === undefined ? '+' : '✏️'}</button>
+        <button className="add-btn" style={weeklyGoal === undefined ? {fontSize: '20px'} : {}} aria-label={weeklyGoal === undefined ? "Add weekly limit" : "Edit weekly limit"} title={weeklyGoal === undefined ? "Add weekly limit" : "Edit weekly limit"} onClick={()=>setShowWeeklyModal(true)}>{weeklyGoal === undefined ? '+' : 'Edit'}</button>
             </div>
             {weeklyGoal === undefined ? (
-              <p className="muted small" style={{margin:0}}>Create a new limit by clicking +</p>
+              <p className="muted small" style={{margin:0,marginTop:8}}>Create a new limit by clicking +</p>
             ) : (
               <>
                 <ProgressBar value={weeklyUsed || 0} max={weeklyGoal} color="#16a34a" exceeded={weeklyUsed > weeklyGoal} />
@@ -254,19 +271,37 @@ export default function Dashboard() {
             <div className="card-head">
               <span className="icon trophy" />
               <span className="title">Challenges</span>
-            </div>
-            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:8}}>
-              <div style={{fontSize:14,color:'#333'}}>Your active challenges</div>
               <button className="add-btn" aria-label="Create challenge" title="Create challenge" onClick={()=>setShowChallengeModal(true)}>+</button>
             </div>
-            {challenges.length === 0 ? (
+            <div style={{fontSize:14,color:'#333',marginTop:8}}>Your active challenges</div>
+            {activeChallenges.length === 0 ? (
               <p className="muted" style={{margin:0,marginTop:8}}>Create a challenge to get started</p>
             ) : (
               <div style={{display:'grid',gap:8,marginTop:8}}>
-                {challenges.map(c => (
-                  <ChallengeRow key={c.challenge_id} challenge={c} currentUser={user} />
+                {activeChallenges.map(c => (
+                  <ChallengeRow 
+                    key={c.challenge_id} 
+                    challenge={c} 
+                    currentUser={user}
+                    onViewDetails={setSelectedChallenge}
+                  />
                 ))}
               </div>
+            )}
+
+            {pastChallenges.length > 0 && (
+              <>
+                <div style={{fontSize:14,color:'#333',marginTop:16}}>Past challenges</div>
+                <div style={{display:'grid',gap:6,marginTop:8}}>
+                  {pastChallenges.map(c => (
+                    <PastChallengeRow
+                      key={c.challenge_id}
+                      challenge={c}
+                      onViewDetails={setSelectedChallenge}
+                    />
+                  ))}
+                </div>
+              </>
             )}
           </div>
         </aside>
@@ -276,6 +311,7 @@ export default function Dashboard() {
             <div className="top-app-card" style={{ background: 'linear-gradient(180deg,#fff,#fafcff)' }}>
               <div className="app-inner">
                 <div className="usage-main">{todayTotal !== undefined ? minutesLabel(todayTotal) : <span style={{fontSize:'12px'}}>Log your Total Screen Time</span>}</div>
+                <div className="usage-sub">Total Screen Time</div>
                 {todayTotal === undefined && (
                   <div className="usage-sub">Click on the +Log Hours button on the bottom right to log your hours</div>
                 )}
@@ -291,7 +327,7 @@ export default function Dashboard() {
             ))}
           </div>
 
-          <div className="chart-card">
+          <div className="chart-card" style={{paddingLeft: '18px'}}>
             <h3>Last Week's Screen Time</h3>
             <WeeklyChart days={days} chartData={chartData} appColorMap={appColorMap} />
             <div className="chart-legend" style={{display:'flex',flexWrap:'wrap',gap:12,marginTop:10}}>
@@ -332,10 +368,48 @@ export default function Dashboard() {
           onClose={()=>setShowChallengeModal(false)}
             onCreate={async ()=>{
             try {
-              const res = await getChallenges(getUserId(user))
-              setChallenges(Array.isArray(res.challenges) ? res.challenges : [])
+              const challengesList = await getChallenges()
+              setChallenges(Array.isArray(challengesList) ? challengesList : [])
             } catch {
               setChallenges([])
+            }
+          }}
+        />
+      )}
+      {selectedChallenge && (
+        <ChallengeDetailsModal
+          challenge={selectedChallenge}
+          currentUser={user}
+          onClose={() => setSelectedChallenge(null)}
+          onUpdate={async () => {
+            try {
+              const challengesList = await getChallenges()
+              setChallenges(Array.isArray(challengesList) ? challengesList : [])
+              // Update the selected challenge with fresh data
+              const updated = challengesList.find(c => c.challenge_id === selectedChallenge.challenge_id)
+              if (updated) setSelectedChallenge(updated)
+            } catch (err) {
+              console.error('Failed to refresh challenges:', err)
+            }
+          }}
+          onDelete={async (challenge) => {
+            try {
+              await deleteChallenge(challenge.challenge_id)
+              setChallenges(prev => prev.filter(c => c.challenge_id !== challenge.challenge_id))
+              setSelectedChallenge(null)
+            } catch (err) {
+              console.error('Failed to delete challenge:', err)
+              alert(err.message || 'Failed to delete challenge')
+            }
+          }}
+          onLeave={async (challenge) => {
+            try {
+              await leaveChallenge(challenge.challenge_id)
+              setChallenges(prev => prev.filter(c => c.challenge_id !== challenge.challenge_id))
+              setSelectedChallenge(null)
+            } catch (err) {
+              console.error('Failed to leave challenge:', err)
+              alert(err.message || 'Failed to leave challenge')
             }
           }}
         />

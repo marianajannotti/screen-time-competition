@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { friendshipApi } from '../api/friendshipApi'
+import { getPendingInvitations, acceptInvitation, declineInvitation } from '../api/challengesApi'
 import { useAuth } from '../contexts/AuthContext'
 
 export default function Friends() {
@@ -9,23 +10,28 @@ export default function Friends() {
   const [username, setUsername] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [data, setData] = useState({ friends: [], incoming: [], outgoing: [] })
+  const [challengeInvitations, setChallengeInvitations] = useState([])
 
   // Quick indicator to adjust empty-state copy
   const hasAny = useMemo(
     () =>
-      (data.friends?.length || 0) + (data.incoming?.length || 0) + (data.outgoing?.length || 0) > 0,
-    [data],
+      (data.friends?.length || 0) + (data.incoming?.length || 0) + (data.outgoing?.length || 0) + (challengeInvitations?.length || 0) > 0,
+    [data, challengeInvitations],
   )
 
-  // Fetch friendship lists from the backend
+  // Fetch friendship lists and challenge invitations from the backend
   const load = useCallback(async () => {
     setLoading(true)
     setError(null)
     try {
-      const res = await friendshipApi.list()
-      setData(res)
+      const [friendsRes, invitationsRes] = await Promise.all([
+        friendshipApi.list(),
+        getPendingInvitations()
+      ])
+      setData(friendsRes)
+      setChallengeInvitations(invitationsRes || [])
     } catch (err) {
-      setError(err.message || 'Failed to load friends')
+      setError(err.message || 'Failed to load data')
     } finally {
       setLoading(false)
     }
@@ -95,6 +101,45 @@ export default function Friends() {
         <div className="muted">Loading friends…</div>
       ) : (
         <div className="friends-grid">
+          <section className="card friends-column">
+            <div className="friends-column-header">
+              <h3>Challenge invitations</h3>
+              <span className="pill">{challengeInvitations?.length || 0}</span>
+            </div>
+            {(!challengeInvitations || challengeInvitations.length === 0) && <p className="muted">No pending challenge invitations.</p>}
+            <div className="friends-list">
+              {challengeInvitations?.map((item) => (
+                <div key={item.participant_id || item.challenge_id} className="friend-row">
+                  <div className="friend-row-left">
+                    <div className="avatar-circle">{(item.owner_username || '?').slice(0, 2).toUpperCase()}</div>
+                    <div>
+                      <div style={{fontWeight:600}}>{item.name || 'Unnamed Challenge'}</div>
+                      <div style={{fontSize:13,color:'#64748b'}}>
+                        From {item.owner_username || 'Unknown'} • {item.target_app === '__TOTAL__' ? 'Total Screen Time' : item.target_app} • {item.target_minutes}min/day
+                      </div>
+                    </div>
+                  </div>
+                  <div className="friends-actions">
+                    <button
+                      className="btn-primary"
+                      onClick={() => handleAction(() => acceptInvitation(item.participant_id))}
+                      aria-label={`Accept challenge: ${item.name}`}
+                    >
+                      Accept
+                    </button>
+                    <button
+                      className="btn-ghost"
+                      onClick={() => handleAction(() => declineInvitation(item.participant_id))}
+                      aria-label={`Decline challenge: ${item.name}`}
+                    >
+                      Decline
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+
           <FriendsColumn
             title="Incoming requests"
             emptyText="No incoming requests."
@@ -158,7 +203,7 @@ function FriendsColumn({ title, emptyText, items, renderActions }) {
       {(!items || items.length === 0) && <p className="muted">{emptyText}</p>}
       <div className="friends-list">
         {items?.map((item) => (
-          <FriendRow key={item.id} item={item} renderActions={renderActions} />
+          <FriendRow key={item.id || item.participant_id || item.challenge_id} item={item} renderActions={renderActions} />
         ))}
       </div>
     </section>

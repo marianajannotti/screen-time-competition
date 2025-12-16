@@ -3,6 +3,7 @@ import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import homeIcon from '../assets/badges/home-icon.png?url'
 import trophyIcon from '../assets/badges/trophy-icon.png?url'
+import friendsIcon from '../assets/badges/friends-icon.png?url'
 
 export default function Header() {
   const { user, signOut } = useAuth()
@@ -48,7 +49,10 @@ export default function Header() {
         <img src={trophyIcon} alt="Leaderboard" />
         Leaderboard
       </NavLink>
-      <NavLink to="/friends" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>👥 Friends</NavLink>
+      <NavLink to="/friends" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
+        <img src={friendsIcon} alt="Friends" />
+        Friends
+      </NavLink>
       <button aria-label="Open profile" onClick={() => nav('/profile')} className={`header-avatar ${location.pathname.startsWith('/profile') ? 'active' : ''}`}>
         {initials}
       </button>

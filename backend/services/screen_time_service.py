@@ -100,7 +100,8 @@ class ScreenTimeService:
 
     @staticmethod
     def create_entry(user_id: int, data: Dict) -> ScreenTimeLog:
-        """Create or update a screen time entry.
+        """
+        Create or update a screen time entry and update all relevant challenge stats for the user.
 
         If an entry already exists for the same user, app, and date,
         it will be updated with the new time. Otherwise, a new entry
@@ -115,6 +116,11 @@ class ScreenTimeService:
 
         Raises:
             ValidationError: If data is invalid.
+
+        Side Effects:
+            - Updates ChallengeParticipant stats for all active challenges the user is in (days_logged, total_screen_time_minutes, days_passed, days_failed).
+            - Triggers badge logic to check and award badges if criteria are met.
+            - Commits all changes to the database.
         """
         validated = ScreenTimeService._validate_payload(data)
         app_name, total_minutes, entry_date = validated
@@ -161,6 +167,74 @@ class ScreenTimeService:
             db.session.commit()
             log_to_return = new_log
 
+        # --- Challenge stats update logic ---
+        # Wrapped in try-except to ensure screen time log succeeds even if challenge stats fail
+        try:
+            from ..models import Challenge, ChallengeParticipant
+            from sqlalchemy.orm import selectinload
+            
+            # Find all active challenges for this user with eager loading to avoid N+1 queries
+            active_challenges = Challenge.query.join(ChallengeParticipant).filter(
+                ChallengeParticipant.user_id == user_id,
+                Challenge.status == 'active',
+                Challenge.start_date <= entry_date,
+                Challenge.end_date >= entry_date,
+                (Challenge.target_app == app_name) | (Challenge.target_app == '__TOTAL__')
+            ).options(selectinload(Challenge.participants)).all()
+            
+            # Fetch all relevant screen time logs once for all challenges
+            # Get the min/max date range across all challenges
+            if active_challenges:
+                # Bulk fetch all relevant ChallengeParticipant records for this user and these challenges
+                challenge_ids = [challenge.challenge_id for challenge in active_challenges]
+                participants = ChallengeParticipant.query.filter(
+                    ChallengeParticipant.challenge_id.in_(challenge_ids),
+                    ChallengeParticipant.user_id == user_id
+                ).all()
+                participant_map = {p.challenge_id: p for p in participants}
+                
+                min_start = min(c.start_date for c in active_challenges)
+                max_end = max(c.end_date for c in active_challenges)
+                
+                # Fetch all logs in this date range in a single query
+                all_logs = ScreenTimeLog.query.filter(
+                    ScreenTimeLog.user_id == user_id,
+                    ScreenTimeLog.date >= min_start,
+                    ScreenTimeLog.date <= max_end
+                ).all()
+                
+                # Process each challenge using the pre-fetched logs
+                for challenge in active_challenges:
+                    participant = participant_map.get(challenge.challenge_id)
+                    if not participant:
+                        continue
+                    
+                    # Filter logs for this specific challenge in Python
+                    relevant_logs = [
+                        log for log in all_logs
+                        if challenge.start_date <= log.date <= challenge.end_date
+                        and (challenge.target_app == '__TOTAL__' or log.app_name == challenge.target_app)
+                    ]
+                    
+                    # Calculate stats from the filtered logs using helper method
+                    from datetime import date as date_class
+                    today = date_class.today()
+                    stats = ScreenTimeService._calculate_participant_stats(relevant_logs, challenge, today)
+                    
+                    # Update participant stats
+                    participant.days_logged = stats['days_logged']
+                    participant.total_screen_time_minutes = stats['total_screen_time_minutes']
+                    participant.days_passed = stats['days_passed']
+                    participant.days_failed = stats['days_failed']
+                    participant.today_minutes = stats['today_minutes']
+                    participant.today_passed = stats['today_passed']
+            
+            db.session.commit()
+        except Exception as e:
+            db.session.rollback()  # Only rolls back challenge stats changes
+            logger.error(f"Error updating challenge stats for user {user_id}: {e}")
+            # Screen time log was already committed, so it succeeds regardless
+
         # Check and award badges after creating/updating a screen time entry
         try:
             from .badge_achievement_service import BadgeAchievementService
@@ -179,6 +253,122 @@ class ScreenTimeService:
                 logger.error(f"Badge logic error for user {user_id}: {e}")
 
         return log_to_return
+
+    @staticmethod
+    def _calculate_participant_stats(logs: list, challenge, today) -> dict:
+        """
+        Helper method to calculate challenge statistics from screen time logs.
+        
+        Args:
+            logs (list): Filtered list of ScreenTimeLog objects relevant to the challenge
+            challenge: Challenge object with target_minutes attribute
+            today: date object representing today's date
+            
+        Returns:
+            dict: Dictionary containing calculated stats (days_logged, total_minutes, etc.)
+        """
+        if logs:
+            # Group by date and sum minutes per day
+            day_totals = {}
+            for log in logs:
+                day_totals[log.date] = day_totals.get(log.date, 0) + log.screen_time_minutes
+            
+            days_logged = len(day_totals)
+            total_minutes = sum(day_totals.values())
+            days_passed = sum(1 for daily_total in day_totals.values() if daily_total <= challenge.target_minutes)
+            days_failed = days_logged - days_passed
+            
+            # Calculate today's specific status
+            today_minutes = day_totals.get(today, 0)
+            if today in day_totals:
+                today_passed = today_minutes <= challenge.target_minutes
+            else:
+                today_passed = None  # No data for today
+        else:
+            days_logged = 0
+            total_minutes = 0
+            days_passed = 0
+            days_failed = 0
+            today_minutes = 0
+            today_passed = None
+        
+        return {
+            'days_logged': days_logged,
+            'total_screen_time_minutes': total_minutes,
+            'days_passed': days_passed,
+            'days_failed': days_failed,
+            'today_minutes': today_minutes,
+            'today_passed': today_passed
+        }
+
+    @staticmethod
+    def recalculate_challenge_stats(challenge_id: int, user_id: int) -> None:
+        """
+        Recalculate challenge statistics for a specific user and challenge.
+        This should be called when:
+        - A challenge is created (for the owner)
+        - A user accepts a challenge invitation
+        - Any time we need to sync existing logs with challenge stats
+        
+        Args:
+            challenge_id (int): ID of the challenge
+            user_id (int): ID of the user
+            
+        Side Effects:
+            Updates ChallengeParticipant stats for the given user/challenge combination
+        """
+        try:
+            from ..models import Challenge, ChallengeParticipant
+            
+            # Get the challenge and participant
+            challenge = db.session.get(Challenge, challenge_id)
+            if not challenge:
+                logger.warning(f"Challenge {challenge_id} not found")
+                return
+                
+            participant = ChallengeParticipant.query.filter_by(
+                challenge_id=challenge_id,
+                user_id=user_id
+            ).first()
+            
+            if not participant:
+                logger.warning(f"Participant not found for challenge {challenge_id}, user {user_id}")
+                return
+            
+            # Fetch all relevant logs for this challenge
+            relevant_logs = ScreenTimeLog.query.filter(
+                ScreenTimeLog.user_id == user_id,
+                ScreenTimeLog.date >= challenge.start_date,
+                ScreenTimeLog.date <= challenge.end_date
+            ).all()
+            
+            # Filter logs based on target app
+            if challenge.target_app == '__TOTAL__':
+                # For total challenges, include all apps
+                filtered_logs = relevant_logs
+            else:
+                # For specific app challenges, only include that app
+                filtered_logs = [log for log in relevant_logs if log.app_name == challenge.target_app]
+            
+            # Calculate stats using helper method
+            from datetime import date as date_class
+            today = date_class.today()
+            stats = ScreenTimeService._calculate_participant_stats(filtered_logs, challenge, today)
+            
+            # Update participant stats
+            participant.days_logged = stats['days_logged']
+            participant.total_screen_time_minutes = stats['total_screen_time_minutes']
+            participant.days_passed = stats['days_passed']
+            participant.days_failed = stats['days_failed']
+            participant.today_minutes = stats['today_minutes']
+            participant.today_passed = stats['today_passed']
+            
+            db.session.commit()
+            logger.info(f"Recalculated stats for challenge {challenge_id}, user {user_id}")
+            
+        except Exception as e:
+            db.session.rollback()
+            logger.error(f"Error recalculating challenge stats for challenge {challenge_id}, user {user_id}: {e}")
 
     @staticmethod
     def get_entries(
