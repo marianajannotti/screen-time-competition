@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-from smtplib import SMTPException
 from typing import Dict, List, Optional
 
 from sqlalchemy import or_
@@ -120,7 +119,7 @@ class FriendshipService:
                             target_user.username,
                             requester.username
                         )
-                except (SMTPException, ConnectionError, OSError) as e:
+                except Exception as e:
                     # Log the error but don't fail the friend request
                     logger.warning(
                         f"Failed to send friend request email: {str(e)}"
@@ -180,6 +179,14 @@ class FriendshipService:
 
         friendship.status = "accepted"
         db.session.commit()
+        
+        # Check and award badges for both users (both got a new friend!)
+        try:
+            from .badge_achievement_service import BadgeAchievementService
+            BadgeAchievementService.check_and_award_badges(user_id)  # Accepter
+            BadgeAchievementService.check_and_award_badges(friendship.user_id)  # Requester
+        except Exception as e:
+            logger.error(f"Error checking badges after accepting friendship: {e}")
         
         # Send email notification to the original requester
         try:

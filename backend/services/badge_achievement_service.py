@@ -26,10 +26,12 @@ class BadgeAchievementService:
         Returns:
             list: List of badge names that were newly awarded
         """
+        from ..database import db
+        
         if user_id <= 0:
             return []
             
-        user = User.query.get(user_id)
+        user = db.session.get(User, user_id)
         if not user:
             return []
         
@@ -40,6 +42,7 @@ class BadgeAchievementService:
             awarded_badges.extend(BadgeAchievementService._check_streak_badges(user))
             awarded_badges.extend(BadgeAchievementService._check_reduction_badges(user))
             awarded_badges.extend(BadgeAchievementService._check_social_badges(user))
+            awarded_badges.extend(BadgeAchievementService._check_challenge_badges(user))
             awarded_badges.extend(BadgeAchievementService._check_leaderboard_badges(user))
             awarded_badges.extend(BadgeAchievementService._check_prestige_badges(user))
         except SQLAlchemyError as e:
@@ -90,7 +93,20 @@ class BadgeAchievementService:
     @staticmethod
     def _check_reduction_badges(user: User):
         """Check and award screen time reduction badges."""
+        from ..models import ScreenTimeLog
         awarded = []
+        
+        log_count = ScreenTimeLog.query.filter_by(user_id=user.id).count()
+        
+        # One Hour Club - check if user stayed under 1h social media in a day (requires 2+ days)
+        if log_count >= 2 and ScreenTimeService.check_low_usage_day(user.id, max_minutes=60):
+            success, _ = BadgeService.award_badge(user.id, 'One Hour Club')
+            if success:
+                awarded.append('One Hour Club')
+        
+        # Require at least 14 days of data before checking other reduction badges
+        if log_count < 14:
+            return awarded
         
         # Get user's baseline week (first week of data)
         baseline_avg = ScreenTimeService.get_baseline_average(user.id)
@@ -105,7 +121,7 @@ class BadgeAchievementService:
         # Calculate reduction percentage
         reduction_percent = ((baseline_avg - recent_avg) / baseline_avg) * 100
         
-        # Check reduction badges
+        # Check reduction badges (require 14+ days)
         if reduction_percent >= 5:
             success, _ = BadgeService.award_badge(user.id, 'Tiny Wins')
             if success:
@@ -121,13 +137,7 @@ class BadgeAchievementService:
             if success:
                 awarded.append('Half-Life')
         
-        # One Hour Club - check if user stayed under 1h social media in a day
-        if ScreenTimeService.check_low_usage_day(user.id, max_minutes=60):
-            success, _ = BadgeService.award_badge(user.id, 'One Hour Club')
-            if success:
-                awarded.append('One Hour Club')
-        
-        # Digital Minimalist - average < 2h/day for a week
+        # Digital Minimalist - average < 2h/day for a week (requires 14+ days)
         if recent_avg < 120:  # 2 hours = 120 minutes
             success, _ = BadgeService.award_badge(user.id, 'Digital Minimalist')
             if success:
@@ -138,12 +148,16 @@ class BadgeAchievementService:
     @staticmethod
     def _check_social_badges(user: User):
         """Check and award social interaction badges."""
+        from sqlalchemy import or_
         awarded = []
         
-        # Count friendships
+        # Count friendships (both sent and received)
         friend_count = Friendship.query.filter(
             and_(
-                Friendship.user_id == user.id,
+                or_(
+                    Friendship.user_id == user.id,
+                    Friendship.friend_id == user.id
+                ),
                 Friendship.status == 'accepted'
             )
         ).count()
@@ -163,9 +177,61 @@ class BadgeAchievementService:
         return awarded
     
     @staticmethod
+    def _check_challenge_badges(user: User):
+        """
+        Check and award challenge-related badges.
+
+        Args:
+            user (User): User object to check badges for.
+
+        Returns:
+            list: List of newly awarded badge names.
+        """
+        from ..models.challenge import ChallengeParticipant
+        
+        awarded = []
+        
+        # Count accepted challenges (excludes declined invitations)
+        accepted_challenges = ChallengeParticipant.query.filter(
+            ChallengeParticipant.user_id == user.id,
+            ChallengeParticipant.invitation_status == 'accepted'
+        ).count()
+        
+        # Challenge Accepted - Join first challenge
+        if accepted_challenges >= 1:
+            success, _ = BadgeService.award_badge(user.id, 'Challenge Accepted')
+            if success:
+                awarded.append('Challenge Accepted')
+        
+        # Friendly Rival - Participate in 5 challenges
+        if accepted_challenges >= 5:
+            success, _ = BadgeService.award_badge(user.id, 'Friendly Rival')
+            if success:
+                awarded.append('Friendly Rival')
+        
+        # Community Champion - Win at least one challenge
+        won_challenge = ChallengeParticipant.query.filter(
+            ChallengeParticipant.user_id == user.id,
+            ChallengeParticipant.is_winner
+        ).first()
+        
+        if won_challenge:
+            success, _ = BadgeService.award_badge(user.id, 'Community Champion')
+            if success:
+                awarded.append('Community Champion')
+        
+        return awarded
+    
+    @staticmethod
     def _check_leaderboard_badges(user: User):
         """Check and award leaderboard-related badges."""
+        from ..models import ScreenTimeLog
         awarded = []
+        
+        # Require at least 7 days of data before checking leaderboard badges
+        log_count = ScreenTimeLog.query.filter_by(user_id=user.id).count()
+        if log_count < 7:
+            return awarded
         
         # Get user's rank for the current week
         rank = ScreenTimeService.get_user_weekly_rank(user.id)
@@ -188,7 +254,13 @@ class BadgeAchievementService:
     @staticmethod
     def _check_prestige_badges(user: User):
         """Check and award prestige/long-term badges."""
+        from ..models import ScreenTimeLog
         awarded = []
+        
+        # Require at least 30 days of data before checking prestige badges
+        log_count = ScreenTimeLog.query.filter_by(user_id=user.id).count()
+        if log_count < 30:
+            return awarded
         
         # Offline Legend - average < 2h/day for a full month
         monthly_avg = ScreenTimeService.get_monthly_average(user.id)

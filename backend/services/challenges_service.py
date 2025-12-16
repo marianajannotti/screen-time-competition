@@ -176,6 +176,10 @@ class ChallengesService:
         except Exception as e:
             logger.error(f"Error recalculating challenge stats after creation: {e}")
         
+        # Note: Challenge Accepted badge is NOT awarded here
+        # It should only be awarded when accepting an INVITATION to a challenge
+        # The owner creates the challenge, they don't "accept" it
+        
         return challenge
 
     @staticmethod
@@ -348,6 +352,13 @@ class ChallengesService:
                 ScreenTimeService.recalculate_challenge_stats(participation.challenge_id, user_id)
             except Exception as e:
                 logger.error(f"Error recalculating challenge stats after accepting invitation: {e}")
+            
+            # Check and award challenge-related badges
+            try:
+                from .badge_achievement_service import BadgeAchievementService
+                BadgeAchievementService.check_and_award_badges(user_id)
+            except Exception as e:
+                logger.error(f"Error checking badges after accepting challenge: {e}")
         
         return participation
 
@@ -423,7 +434,8 @@ class ChallengesService:
             if participant.days_logged > 0:
                 avg_daily = round(participant.total_screen_time_minutes / participant.days_logged, 2)
             else:
-                avg_daily = None  # Use None instead of infinity for JSON serialization
+                # No logs = 0.0 average (best for zero-target challenges, neutral otherwise)
+                avg_daily = 0.0
             
             leaderboard.append({
                 'user_id': user.id,
@@ -433,13 +445,22 @@ class ChallengesService:
                 'days_passed': participant.days_passed,
                 'days_failed': participant.days_failed,
                 'average_daily_minutes': avg_daily,
-                'final_rank': participant.final_rank,
+                'rank': participant.final_rank,
                 'is_winner': participant.is_winner,
                 'invitation_status': participant.invitation_status
             })
         
-        # Sort by average daily screen time (lowest first, None values sort last)
-        leaderboard.sort(key=lambda x: (x['average_daily_minutes'] is None, x['average_daily_minutes'] or 0))
+        # Sort leaderboard
+        if challenge.status == 'completed':
+            # For completed challenges, sort by rank (with accepted participants first)
+            leaderboard.sort(key=lambda x: (
+                x['invitation_status'] != 'accepted',  # Accepted participants first
+                x['rank'] if x['rank'] is not None else float('inf')  # Then by rank
+            ))
+        else:
+            # For active challenges, sort by average daily screen time (lowest first)
+            # Note: average_daily_minutes is always a number (0.0 if no logs)
+            leaderboard.sort(key=lambda x: x['average_daily_minutes'])
         
         return challenge, leaderboard
 
@@ -559,20 +580,24 @@ class ChallengesService:
         
         # Auto-complete if end_date has passed and still active
         if today > challenge.end_date and challenge.status == 'active':
-            # Get all participants
+            # Get all accepted participants
             participants = ChallengeParticipant.query.filter_by(
-                challenge_id=challenge.challenge_id
+                challenge_id=challenge.challenge_id,
+                invitation_status='accepted'
             ).all()
             
-            # Only include participants who logged at least once
-            active_participants = [p for p in participants if p.days_logged > 0]
-            
-            if active_participants:
+            if participants:
                 # Calculate average daily screen time for each participant
-                participant_averages = [
-                    (p, p.total_screen_time_minutes / p.days_logged) 
-                    for p in active_participants
-                ]
+                # For zero-hour challenges (target 0), users with no logs (0 avg) should win
+                participant_averages = []
+                for p in participants:
+                    if p.days_logged > 0:
+                        avg = p.total_screen_time_minutes / p.days_logged
+                    else:
+                        # No logs means 0 average (perfect for zero-target challenges)
+                        avg = 0.0
+                    participant_averages.append((p, avg))
+                
                 # Sort by average daily screen time (lowest wins)
                 participant_averages.sort(key=lambda x: x[1])
                 
@@ -594,3 +619,12 @@ class ChallengesService:
             challenge.status = 'completed'
             challenge.completed_at = current_time_utc()
             db.session.commit()
+            
+            # Check and award badges for all winners
+            try:
+                from .badge_achievement_service import BadgeAchievementService
+                for participant in participants:
+                    if participant.is_winner:
+                        BadgeAchievementService.check_and_award_badges(participant.user_id)
+            except Exception as e:
+                logger.error(f"Error checking badges after completing challenge: {e}")
