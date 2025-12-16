@@ -42,12 +42,12 @@ def get_user_badges(user_id: int):
         response = make_response(jsonify({"error": "Invalid user ID"}), 400)
         return add_api_headers(response)
     
+    # Only allow users to view their own badges or admin functionality
+    if not current_user.is_authenticated or current_user.id != user_id:
+        response = make_response(jsonify({"error": "Access denied"}), 403)
+        return add_api_headers(response)
+    
     try:
-        # Only allow users to view their own badges or admin functionality
-        if current_user.id != user_id:
-            response = make_response(jsonify({"error": "Access denied"}), 403)
-            return add_api_headers(response)
-            
         user_badges = BadgeService.get_user_badges(user_id)
         response = make_response(jsonify([user_badge.to_dict() for user_badge in user_badges]), 200)
         return add_api_headers(response)

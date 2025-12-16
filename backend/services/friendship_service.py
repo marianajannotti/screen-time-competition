@@ -146,7 +146,7 @@ class FriendshipService:
                     target_user.username,
                     requester.username
                 )
-        except (SMTPException, ConnectionError, OSError) as e:
+        except Exception as e:
             # Log the error but don't fail the friend request
             logger.warning(
                 f"Failed to send friend request email to "
