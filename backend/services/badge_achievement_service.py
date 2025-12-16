@@ -91,7 +91,13 @@ class BadgeAchievementService:
     @staticmethod
     def _check_reduction_badges(user: User):
         """Check and award screen time reduction badges."""
+        from ..models import ScreenTimeLog
         awarded = []
+        
+        # Require at least 14 days of data before checking reduction badges
+        log_count = ScreenTimeLog.query.filter_by(user_id=user.id).count()
+        if log_count < 14:
+            return awarded
         
         # Get user's baseline week (first week of data)
         baseline_avg = ScreenTimeService.get_baseline_average(user.id)
@@ -204,7 +210,13 @@ class BadgeAchievementService:
     @staticmethod
     def _check_leaderboard_badges(user: User):
         """Check and award leaderboard-related badges."""
+        from ..models import ScreenTimeLog
         awarded = []
+        
+        # Require at least 7 days of data before checking leaderboard badges
+        log_count = ScreenTimeLog.query.filter_by(user_id=user.id).count()
+        if log_count < 7:
+            return awarded
         
         # Get user's rank for the current week
         rank = ScreenTimeService.get_user_weekly_rank(user.id)
@@ -227,7 +239,13 @@ class BadgeAchievementService:
     @staticmethod
     def _check_prestige_badges(user: User):
         """Check and award prestige/long-term badges."""
+        from ..models import ScreenTimeLog
         awarded = []
+        
+        # Require at least 30 days of data before checking prestige badges
+        log_count = ScreenTimeLog.query.filter_by(user_id=user.id).count()
+        if log_count < 30:
+            return awarded
         
         # Offline Legend - average < 2h/day for a full month
         monthly_avg = ScreenTimeService.get_monthly_average(user.id)
