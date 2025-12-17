@@ -38,10 +38,11 @@ A web application for friendly screen time competition - track daily usage, set 
    FLASK_ENV=development
    DATABASE_URL=sqlite:///screen_time_app.db
    
-   # Optional - for password reset feature
+   # Optional - for email service feature
    MAIL_USERNAME=your-email@gmail.com
    MAIL_PASSWORD=your-app-password
    ```
+Instructions for setting up Gmail SMTP can be found [here](https://mailtrap.io/blog/gmail-smtp/). You need to enable two factor authentication, then generate an app password. After that, replace the email service enviornment above with your email address and the generated app password.
 
 ### Running the App
 
